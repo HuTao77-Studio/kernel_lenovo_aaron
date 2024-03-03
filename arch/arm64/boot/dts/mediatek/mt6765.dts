@@ -660,13 +660,35 @@ firmware_class.path=/vendor/firmware";
 		status = "okay";
 	};
 
+    // Lenovo add start
+        lcm: lcm_gpio {
+		compatible = "mediatek,lcm_gpio";
+	};
+	// Lenovo add end
+
 	touch: touch {
 		compatible = "mediatek,touch";
 	};
 
+    // Lenovo add start
+    hall_1: hall_1 {
+        compatible = "mediatek,hall_1";
+    };
+	// Lenovo add end
+
 	accdet: accdet {
 		compatible = "mediatek,pmic-accdet";
 	};
+
+    // Lenovo add start
+	dbmdx: dbmdx {
+		compatible = "dspg,dbmdx-codec";
+	};
+
+	dbmdx_soundcard: dbmdx-soundcard {
+		compatible = "dbmdx,dbmdx-soundcard";
+	};
+	// Lenovo add end
 
 	goodix_fp: fingerprint {
 		compatible = "mediatek,goodix-fp";
@@ -2460,6 +2482,12 @@ firmware_class.path=/vendor/firmware";
 			"TOP_ULPOSC1_D8";
 	};
 
+    // Lenovo add start
+	swtp: swtp {
+		compatible = "mediatek, swtp-eint";
+	};
+	// Lenovo add end
+
 	dsi_te: dsi_te {
 		compatible = "mediatek, DSI_TE-eint";
 		status = "disabled";
@@ -2729,6 +2757,18 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,flashlight_core";
 	};
 
+    // Lenovo add start
+	flashlights_led191: flashlights_led191 {
+		compatible = "mediatek,flashlights_led191";
+		decouple = <0>;
+		channel@1 {
+			type = <0>;
+			ct = <0>;
+			part = <0>;
+		};
+	};
+	// Lenovo add end
+
 	flashlights_mt6370: flashlights_mt6370 {
 		compatible = "mediatek,flashlights_mt6370";
 		decouple = <0>;
@@ -2763,7 +2803,9 @@ firmware_class.path=/vendor/firmware";
 	lk_charger: lk_charger {
 		compatible = "mediatek,lk_charger";
 		enable_anime;
-		enable_pe_plus;
+		// Lenovo add start
+		/* enable_pe_plus; */
+		// Lenovo add end
 		enable_pd20_reset;
 		power_path_support;
 		max_charger_voltage = <6500000>;
@@ -2771,34 +2813,54 @@ firmware_class.path=/vendor/firmware";
 
 		/* charging current */
 		usb_charger_current = <500000>;
-		ac_charger_current = <2050000>;
-		ac_charger_input_current = <3200000>;
+		// Lenovo add start
+		/* ac_charger_current = <2050000>; */
+		/* ac_charger_input_current = <3200000>; */
+		ac_charger_current = <2500000>;
+		ac_charger_input_current = <2000000>;
+		// Lenovo add end
 		non_std_ac_charger_current = <500000>;
 		charging_host_charger_current = <1500000>;
-		ta_ac_charger_current = <3000000>;
+		// Lenovo add start
+		/* ta_ac_charger_current = <3000000>; */
+		ta_ac_charger_current = <2000000>;
+		// Lenovo add end
 		pd_charger_current = <500000>;
 
 		/* battery temperature protection */
 		temp_t4_threshold = <50>;
 		temp_t3_threshold = <45>;
 		temp_t1_threshold = <0>;
+
+		// Lenovo add start
+		/* lenovo Atika */
+		atika_ac_charger_current = <1500000>;
+		atika_ac_charger_input_current = <1000000>;
+		atika_non_std_ac_charger_current = <900000>;
+		atika_charging_host_charger_current = <1000000>;
+		// Lenovo add end
 	};
 
 	charger: charger {
 		compatible = "mediatek,charger";
 		algorithm_name = "SwitchCharging";
-		/* enable_sw_jeita; */
-		enable_pe_plus;
-		enable_pe_2;
-		enable_pe_3;
-		enable_pe_4;
-		enable_type_c;
+		// Lenovo add start
+		enable_sw_jeita;
+		/* enable_pe_plus; */
+		/* enable_pe_2; */
+		/* enable_pe_3; */
+		/* enable_pe_4; */
+		/* enable_type_c; */
+		// Lenovo add end
 		power_path_support;
 		enable_dynamic_mivr;
 		disable_pd_dual;
 
 		/* common */
-		battery_cv = <4350000>;
+		// Lenovo add start
+		/* battery_cv = <4350000>; */
+		battery_cv = <4432000>;
+		// Lenovo add end
 		max_charger_voltage = <6500000>;
 		min_charger_voltage = <4600000>;
 
@@ -2812,29 +2874,100 @@ firmware_class.path=/vendor/firmware";
 		usb_charger_current_unconfigured = <70000>;
 		usb_charger_current_configured = <500000>;
 		usb_charger_current = <500000>;
-		ac_charger_current = <2050000>;
-		ac_charger_input_current = <3200000>;
+		// Lenovo add start
+		/* ac_charger_current = <2050000>; */
+		/* ac_charger_input_current = <3200000>; */
+		ac_charger_current = <2500000>;
+		ac_charger_input_current = <2000000>;
+		// Lenovo add end
 		non_std_ac_charger_current = <500000>;
 		charging_host_charger_current = <1500000>;
 		apple_1_0a_charger_current = <650000>;
 		apple_2_1a_charger_current = <800000>;
-		ta_ac_charger_current = <3000000>;
+		// Lenovo add start
+		/* ta_ac_charger_current = <3000000>; */
+		ta_ac_charger_current = <2000000>;
+		// Lenovo add end
+
+		// Lenovo add start
+		/* pogo charging current */
+		pogo_charger_current = <1500000>;
+		pogo_charger_input_current = <1500000>;
+		// Lenovo add end
+
+		// Lenovo add start
+		/* lenovo Atika */
+		atika_ac_charger_current = <1500000>;
+		atika_ac_charger_input_current = <1000000>;
+		atika_non_std_ac_charger_current = <900000>;
+		atika_charging_host_charger_current = <1000000>;
+		// Lenovo add end
 
 		/* sw jeita */
-		jeita_temp_above_t4_cv = <4240000>;
-		jeita_temp_t3_to_t4_cv = <4240000>;
-		jeita_temp_t2_to_t3_cv = <4340000>;
-		jeita_temp_t1_to_t2_cv = <4240000>;
-		jeita_temp_t0_to_t1_cv = <4040000>;
-		jeita_temp_below_t0_cv = <4040000>;
+		// Lenovo add start
+		jeita_temp_above_t4_cc = <0>;
+		jeita_temp_t3_to_t4_cc = <1200000>;
+		jeita_temp_t2_to_t3_cc = <2000000>;
+		jeita_temp_t1_to_t2_cc = <1000000>;
+		jeita_temp_t0_to_t1_cc = <0>;
+		jeita_temp_below_t0_cc = <0>;
+
+		jeita_temp_above_t4_cic = <0>;
+		jeita_temp_t3_to_t4_cic = <1200000>;
+		jeita_temp_t2_to_t3_cic = <2000000>;
+		jeita_temp_t1_to_t2_cic = <1000000>;
+		jeita_temp_t0_to_t1_cic = <0>;
+		jeita_temp_below_t0_cic = <0>;
+		// Lenovo add end
+
+		// Lenovo add start
+		atika_jeita_temp_above_t4_cc = <0>;
+		atika_jeita_temp_t3_to_t4_cc = <1000000>;
+		atika_jeita_temp_t2_to_t3_cc = <1000000>;
+		atika_jeita_temp_t1_to_t2_cc = <1000000>;
+		atika_jeita_temp_t0_to_t1_cc = <0>;
+		atika_jeita_temp_below_t0_cc = <0>;
+
+		atika_jeita_temp_above_t4_cic = <0>;
+		atika_jeita_temp_t3_to_t4_cic = <1000000>;
+		atika_jeita_temp_t2_to_t3_cic = <1000000>;
+		atika_jeita_temp_t1_to_t2_cic = <1000000>;
+		atika_jeita_temp_t0_to_t1_cic = <0>;
+		atika_jeita_temp_below_t0_cic = <0>;
+		// Lenovo add end
+
+		// Lenovo add start
+		/* jeita_temp_above_t4_cv = <4240000>; */
+		/* jeita_temp_t3_to_t4_cv = <4240000>; */
+		/* jeita_temp_t2_to_t3_cv = <4340000>; */
+		/* jeita_temp_t1_to_t2_cv = <4240000>; */
+		/* jeita_temp_t0_to_t1_cv = <4040000>; */
+		/* jeita_temp_below_t0_cv = <4040000>; */
+		jeita_temp_above_t4_cv = <4208000>;
+		jeita_temp_t3_to_t4_cv = <4208000>;
+		jeita_temp_t2_to_t3_cv = <4432000>;
+		jeita_temp_t1_to_t2_cv = <4432000>;
+		jeita_temp_t0_to_t1_cv = <4432000>;
+		jeita_temp_below_t0_cv = <4432000>;
+		// Lenovo add end
 		temp_t4_thres = <50>;
-		temp_t4_thres_minus_x_degree = <47>;
+		// Lenovo add start
+		/* temp_t4_thres_minus_x_degree = <47>; */
+		temp_t4_thres_minus_x_degree = <49>;
+		// Lenovo add end
 		temp_t3_thres = <45>;
-		temp_t3_thres_minus_x_degree = <39>;
-		temp_t2_thres = <10>;
+		// Lenovo add start
+		/* temp_t3_thres_minus_x_degree = <39>; */
+		/* temp_t2_thres = <10>; */
+		temp_t3_thres_minus_x_degree = <44>;
+		temp_t2_thres = <15>;
+		// Lenovo add end
 		temp_t2_thres_plus_x_degree = <16>;
 		temp_t1_thres = <0>;
-		temp_t1_thres_plus_x_degree = <6>;
+		// Lenovo add start
+		/* temp_t1_thres_plus_x_degree = <6>; */
+		temp_t1_thres_plus_x_degree = <1>;
+		// Lenovo add end
 		temp_t0_thres = <0>;
 		temp_t0_thres_plus_x_degree = <0>;
 		temp_neg_10_thres = <0>;
@@ -2850,9 +2983,14 @@ firmware_class.path=/vendor/firmware";
 		ta_12v_support;
 		ta_9v_support;
 		pe_ichg_level_threshold = <1000000>; /* uA */
-		ta_ac_12v_input_current = <3200000>;
-		ta_ac_9v_input_current = <3200000>;
-		ta_ac_7v_input_current = <3200000>;
+		// Lenovo add start
+		/* ta_ac_12v_input_current = <3200000>; */
+		/* ta_ac_9v_input_current = <3200000>; */
+		/* ta_ac_7v_input_current = <3200000>; */
+		ta_ac_12v_input_current = <2000000>;
+		ta_ac_9v_input_current = <2000000>;
+		ta_ac_7v_input_current = <2000000>;
+		// Lenovo add end
 
 		/* PE 2.0 */
 		pe20_ichg_level_threshold = <1000000>; /* uA */
@@ -2866,11 +3004,18 @@ firmware_class.path=/vendor/firmware";
 		low_temp_to_enter_pe40 = <16>;
 
 		/* PE 4.0 single charger*/
-		pe40_single_charger_input_current = <3000000>;
-		pe40_single_charger_current = <3000000>;
+		// Lenovo add start
+		/* pe40_single_charger_input_current = <3000000>; */
+		/* pe40_single_charger_current = <3000000>; */
+		pe40_single_charger_input_current = <2000000>;
+		pe40_single_charger_current = <2000000>;
+		// Lenovo add end
 
 		/* PE 4.0 dual charger*/
-		pe40_dual_charger_input_current = <3000000>;
+		// Lenovo add start
+		/* pe40_dual_charger_input_current = <3000000>; */
+		pe40_dual_charger_input_current = <2000000>;
+		// Lenovo add end
 		pe40_dual_charger_chg1_current = <2000000>;
 		pe40_dual_charger_chg2_current = <2000000>;
 		pe40_stop_battery_soc = <80>;
@@ -2909,6 +3054,17 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,pd_adapter";
 		adapter_name = "pd_adapter";
 	};
+
+	// Lenovo add start
+	pogo_charger: pogo_charger {
+		compatible = "mediatek,pogo-charger";
+		pogo,en_gpio = <&pio 177 0>;
+		pogo,otg_gpio = <&pio 169 0>;
+		pogo,wrx_gpio = <&pio 13 0>;
+		pogo,intr_pogo_0 = <&pio 5 0>;
+		pogo,intr_pogo_1 = <&pio 9 0>;
+	};
+	// Lenovo add end
 
 	rt9465_slave_chr: rt9465_slave_chr {
 		compatible = "richtek,rt9465";
@@ -3159,6 +3315,11 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,dynamic_options";
 	};
 
+	// Lenovo add start
+	led_pinctrl: led_pinctrl{
+		compatible = "mediatek,led_pinctrl";		
+	};
+	// Lenovo add end
 };
 
 #include "cust_mt6765_msdc.dtsi"

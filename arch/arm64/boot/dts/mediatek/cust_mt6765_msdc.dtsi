@@ -64,7 +64,10 @@
 
 	host_function = /bits/ 8 <MSDC_SD>;
 
-	cd_level = /bits/ 8 <MSDC_CD_LOW>;
+	// Lenovo add start
+	/* cd_level = /bits/ 8 <MSDC_CD_LOW>; */
+	cd_level = /bits/ 8 <MSDC_CD_HIGH>;
+	// Lenovo add end
 	cd-gpios = <&pio 1 0>;
 
 	status = "okay";
