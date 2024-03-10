@@ -89,6 +89,7 @@ struct ps_control_path {
 	int (*access_data_fifo)(void); /* version2.used for flush operate */
 	int (*ps_calibration)(int type, int value);
 	int (*set_cali)(uint8_t *data, uint8_t count);
+	int (*change_distance)(uint8_t *mode);
 	bool is_report_input_direct;
 	bool is_support_batch; /* version2.used for batch mode support flag */
 	bool is_polling_mode;

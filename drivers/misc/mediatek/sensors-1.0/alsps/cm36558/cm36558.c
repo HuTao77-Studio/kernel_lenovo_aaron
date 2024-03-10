@@ -1229,6 +1229,11 @@ static int als_enable_nodata(int en)
 		pr_err("als_enable_nodata is failed!!\n");
 		return -1;
 	}
+	/*Report default ps value(far away) when enable ps*/
+	/* del the code, sycn it to here from p1 by luofj 2020.6.5
+	if (en != 0)
+		ps_data_report(1, 3);
+	*/
 	return 0;
 }
 
@@ -1295,8 +1300,10 @@ static int ps_enable_nodata(int en)
 		return -1;
 	}
 	/*Report default ps value(far away) when enable ps*/
+	/* del the code, sycn it to here from p1 by luofj 2020.6.5
 	if (en != 0)
 		ps_data_report(1, 3);
+	*/
 	return 0;
 }
 

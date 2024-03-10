@@ -56,6 +56,7 @@
 #include <mtk_hibernate_dpm.h>
 #endif
 
+ 
 #ifdef CONFIG_HIE
 #include <linux/hie.h>
 #include <linux/blk_types.h>
@@ -65,7 +66,7 @@
 #ifdef CONFIG_MTK_EMMC_HW_CQ
 #include "cmdq_hci.h"
 #endif
-
+#include <linux/proc_fs.h>
 #define CAPACITY_2G             (2 * 1024 * 1024 * 1024ULL)
 
 /* FIX ME: Check if its reference in mtk_sd_misc.h can be removed */
@@ -952,7 +953,7 @@ static void msdc_init_hw(struct msdc_host *host)
 
 	/* Disable HW DVFS */
 	if ((host->hw->host_function == MSDC_SDIO)
-	 && (host->use_hw_dvfs == 1)) {
+	&& (host->use_hw_dvfs == 1)) {
 #ifdef CONFIG_MACH_MT6763
 		(void)vcorefs_request_dvfs_opp(KIR_SDIO, OPP_0);
 		MSDC_WRITE32(MSDC_CFG,
@@ -5265,22 +5266,58 @@ static void msdc_add_host(struct work_struct *work)
 /* FIX ME */
 static void msdc_dvfs_kickoff(struct work_struct *work)
 {
-#ifdef CONFIG_MACH_MT6763
-	struct msdc_host *host = NULL;
-
-	host = container_of(work, struct msdc_host, work_sdio.work);
-
-	/* Tell DVFS can start now in these case
-	 * 1. Device is not exist or power on fail.
-	 * 2. Host error when init, ex. clock fail.
-	 * 3. Host in low speed mode and no need AUTOK.
-	 */
-	if (host && !host->is_autok_done) {
-		pr_notice("%s: msdc%d SDIO AUTOK timeout\n", __func__, host->id);
-		spm_msdc_dvfs_setting(KIR_AUTOK_SDIO, 1);
-	}
-#endif
 }
+static int sim_card_status_show(struct seq_file *m, void *v)
+{
+	int gpio_value = 0;
+
+	gpio_value = __gpio_get_value(cd_gpio);
+	if(gpio_value)
+		gpio_value = 0;
+	else
+		gpio_value = 1;
+
+	pr_debug("%s: gpio_value is %d\n", __func__,  gpio_value);
+
+	seq_printf(m, "%d\n", !gpio_value);
+
+	return 0;
+}
+
+static int sim_card_status_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, sim_card_status_show, NULL);
+}
+
+static const struct file_operations sim_card_status_fops = {
+	.open		= sim_card_status_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int sim_card_tray_create_proc(void)
+{
+
+	struct proc_dir_entry *status_entry;
+
+	status_entry = proc_create("sd_tray_gpio_value", 0, NULL, &sim_card_status_fops);
+	if (!status_entry){
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+static void sim_card_tray_remove_proc(void)
+{
+	remove_proc_entry("sd_tray_gpio_value", NULL);
+}
+
+/* use for SPM spm_resource_req */
+unsigned int msdc_cg_lock_init;
+unsigned int msdc_cg_cnt;
+spinlock_t msdc_cg_lock;
 
 #ifdef CONFIG_MTK_EMMC_HW_CQ
 static void msdc_cqhci_post_cqe_halt(struct mmc_host *mmc)
@@ -5607,10 +5644,10 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	}
 
 	if (host->hw->host_function != MSDC_SDIO) {
-		pm_runtime_set_active(&pdev->dev);
-		pm_runtime_enable(&pdev->dev);
-		pm_runtime_set_autosuspend_delay(&pdev->dev, MSDC_AUTOSUSPEND_DELAY_MS);
-		pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, MSDC_AUTOSUSPEND_DELAY_MS);
+	pm_runtime_use_autosuspend(&pdev->dev);
 	} else {
 		msdc_cg_cnt++;
 	}
@@ -5630,6 +5667,14 @@ static int msdc_drv_probe(struct platform_device *pdev)
 		msdc_proc_emmc_create();
 #endif
 		msdc_debug_proc_init_bootdevice();
+	}
+	
+	if (host->hw->host_function == MSDC_SD) {
+		if(sim_card_tray_create_proc()) {
+			dev_err(&pdev->dev, "creat proc sim_card_status failed\n");
+		} else {
+			dev_dbg(&pdev->dev, "creat proc sim_card_status successed\n");
+		}
 	}
 
 	return 0;
@@ -5663,7 +5708,7 @@ static int msdc_drv_remove(struct platform_device *pdev)
 #endif
 
 	if (host->hw->host_function != MSDC_SDIO)
-		pm_runtime_disable(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 	mmc_remove_host(host->mmc);
 
 	dma_free_coherent(NULL, MAX_GPD_NUM * sizeof(struct gpd_t),
@@ -5677,6 +5722,9 @@ static int msdc_drv_remove(struct platform_device *pdev)
 	if (mem)
 		release_mem_region(mem->start, mem->end - mem->start + 1);
 
+	if(host->hw->host_function == MSDC_SD){
+		sim_card_tray_remove_proc();
+	}
 	msdc_remove_host(host);
 
 	return 0;
@@ -5773,18 +5821,18 @@ static const struct dev_pm_ops msdc_pmops = {
 static int msdc_drv_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	int ret = 0;
-	struct msdc_host *host = platform_get_drvdata(pdev);
-	struct mmc_host *mmc;
+	struct mmc_host *mmc = platform_get_drvdata(pdev);
+	struct msdc_host *host;
 	void __iomem *base;
 
-	if (host == NULL || host->base == NULL) {
-		ERR_MSG("sdio: host is null");
+	if (mmc == NULL) {
+		ERR_MSG("sdio: msdc_drv_suspend mmc is null ");
 		return 0;
 	}
 
-	mmc = host->mmc;
-	if (mmc == NULL) {
-		ERR_MSG("sdio: mmc is null ");
+	host = mmc_priv(mmc);
+	if (host == NULL || host->base == NULL) {
+		ERR_MSG("sdio: msdc_drv_suspend host is null");
 		return 0;
 	}
 
@@ -5822,8 +5870,8 @@ static int msdc_drv_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int msdc_drv_resume(struct platform_device *pdev)
 {
-	struct msdc_host *host = platform_get_drvdata(pdev);
-	struct mmc_host *mmc = host->mmc;
+	struct mmc_host *mmc = platform_get_drvdata(pdev);
+	struct msdc_host *host = mmc_priv(mmc);
 	struct pm_message state;
 
 	state.event = PM_EVENT_RESUME;

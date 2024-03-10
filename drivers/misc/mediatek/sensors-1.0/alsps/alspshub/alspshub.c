@@ -837,6 +837,17 @@ static int ps_set_cali(uint8_t *data, uint8_t count)
 	return sensor_cfg_to_hub(ID_PROXIMITY, data, count);
 }
 
+static int ps_change_distance(uint8_t *mode)
+{
+	int32_t tmp_buf[2] = {0};
+    uint8_t *buf = (uint8_t *)tmp_buf;
+
+	tmp_buf[0] = 0x5555;
+	tmp_buf[1] = *mode;
+	pr_err("%s tmp_buf = 0x%x %d\n",__func__,tmp_buf[0],tmp_buf[1]);
+	return sensor_cfg_to_hub(ID_PROXIMITY, buf, sizeof(buf));
+}
+
 static int scp_ready_event(uint8_t event, void *ptr)
 {
 	struct alspshub_ipi_data *obj = obj_ipi_data;
@@ -963,6 +974,7 @@ static int alspshub_probe(struct platform_device *pdev)
 	ps_ctl.batch = ps_batch;
 	ps_ctl.flush = ps_flush;
 	ps_ctl.set_cali = ps_set_cali;
+	ps_ctl.change_distance = ps_change_distance;
 	ps_ctl.is_report_input_direct = false;
 
 	ps_ctl.is_support_batch = false;

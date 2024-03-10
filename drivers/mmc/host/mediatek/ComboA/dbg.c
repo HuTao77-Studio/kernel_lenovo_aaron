@@ -2904,7 +2904,7 @@ int msdc_debug_proc_init(void)
 	if (!prEntry)
 		pr_notice("[%s]: failed to create /proc/msdc_help\n", __func__);
 
-	prEntry = proc_create("sdcard_intr_gpio_value", 0440, NULL,
+	prEntry = proc_create("sdcard_intr_gpio_value", 0444, NULL,
 				&sdcard_intr_gpio_value_fops);
 
 	if (!prEntry)

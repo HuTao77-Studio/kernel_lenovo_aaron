@@ -103,6 +103,8 @@ static unsigned int extd_esd_check_mode;
 static unsigned int extd_esd_check_enable;
 #endif
 
+extern int lcd_need_reset;
+
 unsigned int get_esd_check_mode(void)
 {
 	return esd_check_mode;
@@ -1102,7 +1104,7 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 	struct sched_param param = {.sched_priority = 87 };
 	int ret = 0;
 	int i = 0;
-	int esd_try_cnt = 5; /* 20; */
+	int esd_try_cnt = 20; /* 20; */
 	int recovery_done = 0;
 
 	DISPFUNC();
@@ -1138,15 +1140,24 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 
 		i = 0; /* repeat */
 		do {
-			ret = primary_display_esd_check();
-			if (!ret) /* success */
-				break;
+			DISPCHECK("[ESD][videolfb] lcmname    = %s\n", mtkfb_lcm_name);
+			if(!strcmp(mtkfb_lcm_name, "ft8201_wxga_vdo_incell_boe") ||
+				!strcmp(mtkfb_lcm_name, "ft8201_wxga_vdo_incell_inx")){
+				DISPERR("[ESD]lcd_need_reset =%d\n",lcd_need_reset);
+				if(!lcd_need_reset)
+					break;
+			}else{
+				ret = primary_display_esd_check();
+				if (!ret) /* success */
+					break;
+			}
 
 			DISPERR(
 				"[ESD]esd check fail, will do esd recovery. try=%d\n",
 				i);
 			primary_display_esd_recovery();
 			recovery_done = 1;
+			lcd_need_reset= 0;
 		} while (++i < esd_try_cnt);
 
 		if (ret == 1) {

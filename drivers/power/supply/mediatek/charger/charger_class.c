@@ -104,6 +104,14 @@ int charger_dev_do_event(struct charger_device *chg_dev, u32 event, u32 args)
 }
 EXPORT_SYMBOL(charger_dev_do_event);
 
+int charger_dev_hz_mode(struct charger_device *chg_dev, bool en)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL && chg_dev->ops->hz_mode)
+		return chg_dev->ops->hz_mode(chg_dev, en);
+
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_hz_mode);
 int charger_dev_set_charging_current(struct charger_device *chg_dev, u32 uA)
 {
 	if (chg_dev != NULL && chg_dev->ops != NULL &&
@@ -639,6 +647,15 @@ int charger_dev_enable_hidden_mode(struct charger_device *charger_dev, bool en)
 	return -ENOTSUPP;
 }
 EXPORT_SYMBOL(charger_dev_enable_hidden_mode);
+
+int charger_dev_shipping_mode_enable(struct charger_device *charger_dev, bool en)
+{
+	if (charger_dev != NULL && charger_dev->ops != NULL &&
+					   charger_dev->ops->shipping_mode_enable)
+		return charger_dev->ops->shipping_mode_enable(charger_dev, en);
+	return -ENOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_shipping_mode_enable);
 
 static DEVICE_ATTR(name, 0444, charger_show_name, NULL);
 

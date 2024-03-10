@@ -145,6 +145,8 @@ static u32 port_mode = PORT_MODE_USB;
 void __iomem *ap_gpio_base;
 #endif
 
+bool otg_enable = 1;
+
 /*EP Fifo Config*/
 static struct musb_fifo_cfg fifo_cfg[] __initdata = {
 	{.hw_ep_num = 1, .style = MUSB_FIFO_TX, .maxpacket = 512,
@@ -1135,6 +1137,32 @@ static ssize_t mt_usb_show_uart_path(struct device *dev,
 DEVICE_ATTR(uartpath, 0444, mt_usb_show_uart_path, NULL);
 #endif
 
+static ssize_t otg_enable_show(struct device *dev,
+               struct device_attribute *attr, char *buf)
+{
+   if(mtk_musb->otg_enable)
+       return snprintf(buf, PAGE_SIZE, "y\n");
+   else
+       return snprintf(buf, PAGE_SIZE, "n\n");
+}
+
+static ssize_t otg_enable_store(struct device *dev,
+               struct device_attribute *attr, const char *buf, size_t count)
+{
+   bool value;
+   int ret;
+
+   ret = strtobool(buf, &value);
+   if (!ret) {
+       mtk_musb->otg_enable = value;
+       return count;
+   }
+
+   return ret;
+}
+DEVICE_ATTR(otgenable, 0664, otg_enable_show, otg_enable_store);
+
+
 #ifndef FPGA_PLATFORM
 static struct device_attribute *mt_usb_attributes[] = {
 	&dev_attr_saving,
@@ -1142,6 +1170,7 @@ static struct device_attribute *mt_usb_attributes[] = {
 	&dev_attr_portmode,
 	&dev_attr_uartpath,
 #endif
+	&dev_attr_otgenable,
 	NULL
 };
 
@@ -1959,3 +1988,5 @@ static struct kernel_param_ops option_param_ops = {
 	.get = param_get_int,
 };
 module_param_cb(option, &option_param_ops, &option, 0644);
+module_param(otg_enable, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(otg_enable, "otg_enable or not while booting");

@@ -147,7 +147,11 @@ void PMIC_LP_INIT_SETTING(void)
 	/*Suspend*/
 	pmic_buck_vproc_lp(SW, 1, SW_OFF);
 	pmic_buck_vcore_lp(SRCLKEN0, 1, HW_LP);
+#if defined(CONFIG_WT_PMU_WIFI_ONLY)
+	pmic_buck_vmodem_lp(SW, 1, SW_OFF);
+#else
 	pmic_buck_vmodem_lp(SRCLKEN0, 1, HW_LP);
+#endif
 	pmic_buck_vs1_lp(SRCLKEN0, 1, HW_LP);
 	pmic_buck_vpa_lp(SW, 1, SW_OFF);
 	pmic_ldo_vsram_proc_lp(SW, 1, SW_OFF);
@@ -182,7 +186,11 @@ void PMIC_LP_INIT_SETTING(void)
 	if (PMIC_CHIP_VER() == 1) {
 		pmic_buck_vproc_lp(SW, 1, SW_LP);
 		pmic_buck_vcore_lp(SW, 1, SW_ON);
+#if defined(CONFIG_WT_PMU_WIFI_ONLY)
+		pmic_buck_vmodem_lp(SW, 1, SW_OFF);
+#else
 		pmic_buck_vmodem_lp(SRCLKEN2, 1, HW_LP);
+#endif
 		pmic_buck_vs1_lp(SRCLKEN2, 1, HW_LP);
 		pmic_buck_vpa_lp(SW, 1, SW_OFF);
 		pmic_ldo_vsram_proc_lp(SW, 1, SW_LP);
@@ -215,7 +223,11 @@ void PMIC_LP_INIT_SETTING(void)
 	} else if (PMIC_CHIP_VER() >= 2) {
 		pmic_buck_vproc_lp(SW, 1, SW_LP);
 		pmic_buck_vcore_lp(SRCLKEN2, 1, HW_LP);
+#if defined(CONFIG_WT_PMU_WIFI_ONLY)
+		pmic_buck_vmodem_lp(SW, 1, SW_OFF);
+#else
 		pmic_buck_vmodem_lp(SRCLKEN2, 1, HW_LP);
+#endif
 		pmic_buck_vs1_lp(SRCLKEN2, 1, HW_LP);
 		pmic_buck_vpa_lp(SW, 1, SW_OFF);
 		pmic_ldo_vsram_proc_lp(SW, 1, SW_LP);
@@ -261,7 +273,11 @@ void PMIC_LP_INIT_SETTING(void)
 	/*Suspend*/
 	pmic_buck_vproc_lp(SW, 1, SW_OFF);
 	/*pmic_buck_vcore_lp(SRCLKEN0, 1, HW_LP);*/
+#if defined(CONFIG_WT_PMU_WIFI_ONLY)
+	pmic_buck_vmodem_lp(SW, 1, SW_OFF);
+#else
 	pmic_buck_vmodem_lp(SRCLKEN0, 1, HW_LP);
+#endif
 	pmic_buck_vs1_lp(SRCLKEN0, 1, HW_LP);
 	pmic_buck_vpa_lp(SW, 1, SW_OFF);
 	pmic_ldo_vsram_proc_lp(SW, 1, SW_OFF);
@@ -294,7 +310,11 @@ void PMIC_LP_INIT_SETTING(void)
 	/*Deepidle*/
 	pmic_buck_vproc_lp(SW, 1, SW_OFF);
 	/*pmic_buck_vcore_lp(SRCLKEN2, 1, HW_LP);*/
+#if defined(CONFIG_WT_PMU_WIFI_ONLY)
+	pmic_buck_vmodem_lp(SW, 1, SW_OFF);
+#else
 	pmic_buck_vmodem_lp(SRCLKEN2, 1, HW_LP);
+#endif
 	pmic_buck_vs1_lp(SRCLKEN2, 1, HW_LP);
 	pmic_buck_vpa_lp(SW, 1, SW_OFF);
 	pmic_ldo_vsram_proc_lp(SW, 1, SW_OFF);
@@ -339,7 +359,11 @@ void PMIC_LP_INIT_SETTING(void)
 	/* Suspend */
 	pmic_buck_vproc_lp(SW, 1, SW_OFF);
 	pmic_buck_vcore_lp(SRCLKEN0, 1, HW_LP);
+#if defined(CONFIG_WT_PMU_WIFI_ONLY)
+	pmic_buck_vmodem_lp(SW, 1, SW_OFF);
+#else
 	pmic_buck_vmodem_lp(SRCLKEN0, 1, HW_LP);
+#endif
 	pmic_buck_vs1_lp(SRCLKEN0, 1, HW_LP);
 	pmic_buck_vpa_lp(SW, 1, SW_OFF);
 	/*pmic_ldo_vsram_proc_lp(SW, 1, SW_OFF);*/
@@ -372,7 +396,11 @@ void PMIC_LP_INIT_SETTING(void)
 	/*Deepidle*/
 	pmic_buck_vproc_lp(SW, 1, SW_OFF);
 	pmic_buck_vcore_lp(SRCLKEN2, 1, HW_LP);
+#if defined(CONFIG_WT_PMU_WIFI_ONLY)
+	pmic_buck_vmodem_lp(SW, 1, SW_OFF);
+#else
 	pmic_buck_vmodem_lp(SRCLKEN2, 1, HW_LP);
+#endif
 	pmic_buck_vs1_lp(SRCLKEN2, 1, HW_LP);
 	pmic_buck_vpa_lp(SW, 1, SW_OFF);
 	/*pmic_ldo_vsram_proc_lp(SW, 1, SW_OFF);*/

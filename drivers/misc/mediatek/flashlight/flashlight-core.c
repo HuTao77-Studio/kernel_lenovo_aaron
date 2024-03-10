@@ -120,6 +120,8 @@ static int fl_enable(struct flashlight_dev *fdev, int enable)
 #ifdef CONFIG_MTK_FLASHLIGHT_DLPT
 	kicker_pbm_by_flash(enable);
 #endif
+//when the charge is below 15%,the flashlight does not work. Demand JIRA-QUPGRADE-3973
+/*
 #ifdef CONFIG_MTK_FLASHLIGHT_PT
 	if (pt_is_low(pt_low_vol, pt_low_bat, pt_over_cur) == 2)
 		if (enable) {
@@ -129,7 +131,7 @@ static int fl_enable(struct flashlight_dev *fdev, int enable)
 					pt_over_cur, pt_strict);
 		}
 #endif
-
+*/
 	if (fdev->sw_disable_status == FLASHLIGHT_SW_DISABLE_ON) {
 		pr_info("Sw disable on\n");
 		return 0;
@@ -591,7 +593,8 @@ static int pt_trigger(void)
 			if (pt_strict) {
 				pr_info("PT trigger(%d,%d,%d) disable flashlight\n",
 					pt_low_vol, pt_low_bat, pt_over_cur);
-				fl_enable(fdev, 0);
+//when the charge is 15%-16%,the flashlight does not work. Demand JIRA-QUPGRADE-3973
+				//fl_enable(fdev, 0);
 			} else {
 				pr_info("PT trigger(%d,%d,%d) decrease duty: %d\n",
 					pt_low_vol, pt_low_bat,

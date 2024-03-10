@@ -50,6 +50,7 @@
 #include "disp_lowpower.h"
 #include "disp_drv_log.h"
 #include "disp_recovery.h"
+#include "disp_cust.h"
 
 static struct dentry *debugfs;
 static struct dentry *debugDir;
@@ -96,6 +97,10 @@ static char STR_HELP[] =
 /* ------------------------------------------------------------------------- */
 static int low_power_cust_mode = LP_CUST_DISABLE;
 static unsigned int vfp_backup;
+
+char para_lcd_reg[16] = {0};
+int lcd_reg_cmd = 0;
+int lcd_reg_size = 0;
 
 int get_lp_cust_mode(void)
 {
@@ -742,6 +747,62 @@ static void process_dbg_opt(const char *opt)
 			tmp += snprintf(buf + tmp, buf_size_left - tmp,
 				"para[%d]=0x%x,", i, para[i]);
 		DISPMSG("%s\n", buf);
+	} else if (strncmp(opt, "set_customer_cmd:", 17) == 0) {
+		int cmd;
+		int hs;
+		int para_cnt, i;
+		char para[15] = {0};
+		struct LCM_setting_table_V3 test;
+		static char fmt[256] = "set_customer_cmd:0x%x, %d";
+
+		for (i = 0; i < ARRAY_SIZE(para); i++)
+			strncat(fmt, ",0x%hhx", sizeof(fmt) - strlen(fmt) - 1);
+
+		strncat(fmt, "\n", sizeof(fmt) - strlen(fmt) - 1);
+
+		ret = sscanf(opt, fmt, &cmd,
+			&hs, &para[0], &para[1], &para[2], &para[3], &para[4],
+			&para[5], &para[6], &para[7], &para[8], &para[9],
+			&para[10], &para[11], &para[12], &para[13], &para[14]);
+
+		if (ret < 1 || ret > ARRAY_SIZE(para) + 1) {
+			snprintf(buf, 50, "error to parse cmd %s\n", opt);
+			return;
+		}
+
+		para_cnt = ret - 2;
+		test.id = REGFLAG_ESCAPE_ID;
+		test.cmd = cmd;
+		test.count = para_cnt;
+		for (i = 0; i < 15; i++)
+			test.para_list[i] = para[i];
+		pr_info("set_dsi_cmd cmd=0x%x\n", cmd);
+		for (i = 0; i < para_cnt; i++)
+			pr_info("para[%d] = 0x%x\n", i, para[i]);
+		set_lcm(&test, 1, hs);
+
+	} else if (strncmp(opt, "read_customer_cmd:", 18) == 0) {
+		int cmd;
+		int size, i;
+		int sendhs;
+
+		memset(para_lcd_reg,0,16);
+
+		ret = sscanf(opt, "read_customer_cmd:0x%x, %d, %d\n",
+						&cmd, &size, &sendhs);
+
+		if (ret != 3 || size > ARRAY_SIZE(para_lcd_reg)) {
+			snprintf(buf, 50, "error to parse cmd %s\n", opt);
+			return;
+		}
+
+		lcd_reg_cmd = cmd;
+		lcd_reg_size = size;
+		pr_info(" read_lcm: 0x%x, size= %d %d\n", cmd, size, sendhs);
+		read_lcm(cmd, para_lcd_reg, size, sendhs);
+
+		for (i = 0; i < size; i++)
+			pr_info("para[%d] = 0x%x\n", i, para_lcd_reg[i]);
 	} else {
 		dbg_buf[0] = '\0';
 		goto Error;
@@ -752,6 +813,44 @@ static void process_dbg_opt(const char *opt)
 Error:
 	DDPERR("parse command error!\n%s\n\n%s", opt, STR_HELP);
 }
+
+static ssize_t debug_lcd_reg_dump(struct file *file, char __user *buf,
+	size_t size, loff_t *ppos)
+	
+{
+	int i;
+	ssize_t n = 0, count;
+	char *str1 = NULL;
+
+	str1 = kmalloc(128, GFP_KERNEL);
+	    if (!str1) {
+		    pr_err("%s: sh could not allocate a buffer \n");
+		        return -1;
+	    }
+
+	   memset(str1,0,128);
+
+	  n += snprintf(str1 + n, 128-n, "REG 0x%02x: ", lcd_reg_cmd); 
+	
+	for (i = 0; i < lcd_reg_size; i++)
+	{
+		pr_info("sh lcd reg para[%d] = 0x%x\n", i, para_lcd_reg[i]);
+		n += snprintf(str1 + n, 128-n, "%02x ", para_lcd_reg[i]);
+	}
+
+		n += snprintf(str1 + n, 128- n, "\n");
+	
+	count =  simple_read_from_buffer(buf, size, ppos, str1,
+			strlen(str1));
+
+	kfree(str1);
+	return count;
+}
+
+
+static const struct file_operations debug_fops_lcd_reg_dump = {
+	.read = debug_lcd_reg_dump,
+};
 
 
 static void process_dbg_cmd(char *cmd)
@@ -882,6 +981,9 @@ void ddp_debug_init(void)
 	debug_init = 1;
 	debugfs = debugfs_create_file("dispsys",
 		S_IFREG | 0444, NULL, (void *)0, &debug_fops);
+
+	debugfs = debugfs_create_file("lcdreg",
+			S_IFREG | 0444, NULL, (void *)0, &debug_fops_lcd_reg_dump);
 
 
 	debugDir = debugfs_create_dir("disp", NULL);

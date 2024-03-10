@@ -131,13 +131,43 @@ static ssize_t powerup_reason_show(struct kobject *kobj,
 
 }
 
+/* define /sys/bootinfo/hwsec_info */
+extern u32 get_devinfo_with_index(u32 index);
+static ssize_t hwsec_info_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	char hwsec_info[32] = "HWSEC";
+	u32 data = get_devinfo_with_index(27);
+
+	//sbc
+        if (data & 0x02)
+		strcat(hwsec_info, " SBC");
+	//daa
+        if (data & 0x04)
+		strcat(hwsec_info, " DAA");
+
+	return snprintf(buf, sizeof(hwsec_info), "%s\n", hwsec_info);
+}
+
+extern int get_boardinfo(char *buf);
+static ssize_t hardware_info_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+
+	return get_boardinfo(buf);
+}
+
+static struct kobj_attribute hwsec_info_attr = __ATTR_RO(hwsec_info);
 static struct kobj_attribute powerup_reason_attr = __ATTR_RO(powerup_reason);
+static struct kobj_attribute hardware_info_attr = __ATTR_RO(hardware_info);
 
 struct kobject *bootinfo_kobj;
 EXPORT_SYMBOL(bootinfo_kobj);
 
 static struct attribute *bootinfo_attrs[] = {
 	&powerup_reason_attr.attr,
+	&hwsec_info_attr.attr,
+	&hardware_info_attr.attr,
 	NULL
 };
 

@@ -55,6 +55,20 @@ config TOUCHSCREEN_MTK_FOCALTECH_TS
 	  module will be called.
 
 source "drivers/input/touchscreen/mediatek/focaltech_touch/Kconfig"
+
+config TOUCHSCREEN_MTK_FHD_FOCALTECH_TS
+	bool "FOCALTECH_TS for Mediatek package"
+	default n
+	help
+	  Say Y here if you have focaltech_touch touch panel.
+
+	  If unsure, say N.
+
+	  To compile this dirver as a module, choose M here: the
+	  module will be called.
+
+source "drivers/input/touchscreen/mediatek/focaltech_fhd_touch/Kconfig"
+
 config TOUCHSCREEN_MTK_GT1151
 	bool "GT1151 for Mediatek package"
 	default n
@@ -80,7 +94,6 @@ config TOUCHSCREEN_MTK_NT36xxx
 	  module will be called.
 
 source "drivers/input/touchscreen/mediatek/NT36xxx/Kconfig"
-
 
 config TOUCHSCREEN_MTK_NT36572_COMMON
          bool "NT36572 for Mediatek package"
@@ -113,4 +126,18 @@ config TOUCHSCREEN_MTK_FOCALTECH_FHD
 	help
 	  Say Y here if you have Focaltech touch panel.
 	  If unsure, say N.
+
+config TOUCHSCREEN_MTK_CYPRESS_TS
+        bool "Cypress for Mediatek package"
+        default n
+        help
+          Say Y here if you have Cypress touch panel.
+
+          If unsure, say N.
+
+          To compile this dirver as a module, choose M here: the
+          module will be called.
+
+source "drivers/input/touchscreen/mediatek/cypress_fhd_touch/Kconfig"
+
 endif

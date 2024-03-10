@@ -36,6 +36,7 @@
 #endif
 
 static enum charger_type g_chr_type;
+static bool thub_connect_ta = false;
 #ifdef __SW_CHRDET_IN_PROBE_PHASE__
 static struct work_struct chr_work;
 #endif
@@ -45,6 +46,74 @@ static struct power_supply *chrdet_psy;
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
 static bool first_connect = true;
 #endif
+#ifdef CONFIG_POGO_CHARGER
+extern int pogo_get_state(void);
+#endif
+typedef enum {
+   ACA_UNKNOWN = 0,
+   ACA_DOCK, //has external power source
+   ACA_A,     //B device on accessory port
+   ACA_B,     //only for charging
+   ACA_C,    // A device on accessory port
+   ACA_UNCONFIG = 0x8, // Unconfig State
+} ACA_TYPE;
+extern int IMM_GetOneChannelValue(int dwChannel, int data[4], int* rawdata);
+extern int IMM_IsAdcInitReady(void);
+
+#define voltage_threshold 850//mv
+#define voltage_otg 200
+
+static int g_aca_detection = 0xF;
+
+#ifdef CONFIG_TCPC_CLASS
+bool ignore_usb_check = 0;
+#endif
+void hw_otg_reset_aca_type(void)
+{
+	g_aca_detection = 0xF;
+	pr_debug("%s!\n", __func__);
+}
+
+int hw_otg_get_aca_type_detection(void)
+{
+	int ADC_voltage, data[4], i, ret_value = 0;
+	int times=1, IDDIG_CHANNEL_NUM = 3; //(AUXIN3)
+	if( IMM_IsAdcInitReady() == 0 )
+	{
+		pr_err("[%s]: AUXADC is not ready\n", __func__);
+		return ACA_UNCONFIG;
+	}
+
+	i = times;
+	while (i--)
+	{
+		ret_value = IMM_GetOneChannelValue(IDDIG_CHANNEL_NUM, data, &ADC_voltage);
+		ADC_voltage = ADC_voltage * 1500 / 4096;
+		if (ret_value == -1) // AUXADC is busy
+		{
+			pr_err("IMM_GetOneChannelValue wrong, AUXADC is busy");
+			ADC_voltage = 0;
+		}
+		pr_debug("[%s]: AUXADC Channel %d, ADC_voltage %d\n, voltage_threshold %d",
+				__func__, IDDIG_CHANNEL_NUM, ADC_voltage, voltage_threshold);
+	}
+
+	if (ADC_voltage > voltage_threshold)
+		return ACA_UNCONFIG;
+	else if (ADC_voltage < voltage_threshold && ADC_voltage > voltage_otg)
+		return ACA_C;
+	else
+		return ACA_UNKNOWN;
+}
+
+int hw_otg_get_aca_type(void)
+{
+ 	/* need otg type detection */
+	if(0xF == g_aca_detection)
+		g_aca_detection = hw_otg_get_aca_type_detection();
+
+	return g_aca_detection;
+}
 
 static int chrdet_inform_psy_changed(enum charger_type chg_type,
 				bool chg_online)
@@ -288,6 +357,9 @@ static void dump_charger_name(enum charger_type type)
 	case APPLE_0_5A_CHARGER:
 		pr_info("charger type: %d, APPLE_0_5A_CHARGER\n", type);
 		break;
+	case POGO_CHARGER:
+		pr_info("charger type: %d, Pogo Charger\n", type);
+		break;
 	default:
 		pr_info("charger type: %d, Not Defined!!!\n", type);
 		break;
@@ -342,15 +414,47 @@ int hw_charging_get_charger_type(void)
 	return CHR_Type_num;
 }
 
+#ifdef CONFIG_TCPC_CLASS
+void mtk_pmic_set_charger_type_by_pogo(bool en)
+{
+	mutex_lock(&chrdet_lock);
+
+	if(en){
+		g_chr_type = POGO_CHARGER;
+		chrdet_inform_psy_changed(g_chr_type, 1);
+	}else{
+		g_chr_type = CHARGER_UNKNOWN;
+		chrdet_inform_psy_changed(g_chr_type, 0);
+	}
+
+	mutex_unlock(&chrdet_lock);
+}
+#endif
+void mtk_pmic_set_charger_type_by_thub(bool en)
+{
+	if(en){
+		g_chr_type = STANDARD_CHARGER;
+		thub_connect_ta = true;
+		chrdet_inform_psy_changed(g_chr_type, 1);
+        }else{
+		g_chr_type = CHARGER_UNKNOWN;
+		thub_connect_ta = false;
+		chrdet_inform_psy_changed(g_chr_type, 0); 
+	}
+}
 void mtk_pmic_enable_chr_type_det(bool en)
 {
+	int boot_mode = 0;
+	int detect_times=3;
+
 #ifndef CONFIG_TCPC_CLASS
+	int i_ACA_type = 0;
+#endif
 	if (!mt_usb_is_device()) {
 		g_chr_type = CHARGER_UNKNOWN;
 		pr_info("charger type: UNKNOWN, Now is usb host mode. Skip detection\n");
 		return;
 	}
-#endif
 
 	mutex_lock(&chrdet_lock);
 
@@ -363,11 +467,72 @@ void mtk_pmic_enable_chr_type_det(bool en)
 		} else {
 			pr_info("charger type: charger IN\n");
 			g_chr_type = hw_charging_get_charger_type();
+#ifdef CONFIG_POGO_CHARGER
+			/* check pogo status, if pogo only set chr type to pogo */
+			pr_info("check pogo status: %d \n", pogo_get_state());
+			if (g_chr_type == NONSTANDARD_CHARGER) {
+				if (0x02 == pogo_get_state()) {
+					g_chr_type = POGO_CHARGER;
+					pr_info("force chr type for pogo \n");
+				}
+
+			}
+#ifdef CONFIG_TCPC_CLASS	
+			if (g_chr_type == NONSTANDARD_CHARGER && !ignore_usb_check) {
+#else
+			if (g_chr_type == NONSTANDARD_CHARGER) {
+#endif
+				while(detect_times--){
+					pr_info("NONSTANDARD CHARGER detect:%d\n",detect_times);
+					g_chr_type = hw_charging_get_charger_type();
+					if(NONSTANDARD_CHARGER!=g_chr_type){
+						break;
+					}
+				}	
+			}
+			
+			if (g_chr_type == STANDARD_HOST) {
+				boot_mode = get_boot_mode();
+				if (boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT
+				        || boot_mode == LOW_POWER_OFF_CHARGING_BOOT) {
+#ifndef CONFIG_TCPC_CLASS
+				    i_ACA_type = hw_otg_get_aca_type_detection();
+				    if (0x0 == i_ACA_type)
+#endif /* CONFIG_TCPC_CLASS */ 
+				    {
+				        if (0x02 == pogo_get_state()) {
+				            g_chr_type = POGO_CHARGER;
+				            pr_info("force chr type for pogo \n");
+				        }
+				    }
+				}
+			}
+#ifndef CONFIG_TCPC_CLASS
+			if (g_chr_type == NONSTANDARD_CHARGER) {
+				boot_mode = get_boot_mode();
+				if (boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT
+					|| boot_mode == LOW_POWER_OFF_CHARGING_BOOT) {
+					i_ACA_type = hw_otg_get_aca_type_detection();
+					if (0x4 == i_ACA_type) {
+						g_chr_type = STANDARD_CHARGER;
+						pr_info("force chr type for ac\n");
+					}
+				}
+			}
+
+			if(thub_connect_ta && (g_chr_type == NONSTANDARD_CHARGER)) {
+				g_chr_type = STANDARD_CHARGER;
+				pr_info("force chr type for ac\n");
+			}
+#endif /* CONFIG_TCPC_CLASS */
+#endif
 			chrdet_inform_psy_changed(g_chr_type, 1);
 		}
 	} else {
+		hw_otg_reset_aca_type();
 		pr_info("charger type: charger OUT\n");
 		g_chr_type = CHARGER_UNKNOWN;
+		thub_connect_ta = false;
 		chrdet_inform_psy_changed(g_chr_type, 0);
 	}
 
@@ -403,8 +568,12 @@ void chrdet_int_handler(void)
 #ifndef CONFIG_TCPC_CLASS
 			pr_info("%s: system_state=%d\n", __func__,
 				system_state);
-			if (system_state != SYSTEM_POWER_OFF)
+/*			if (system_state != SYSTEM_POWER_OFF) {
+				msleep(3000);
 				kernel_power_off();
+			}
+			msleep(3000);
+				orderly_poweroff(true);*/
 #else
 			return;
 #endif

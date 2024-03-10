@@ -2208,6 +2208,55 @@ static int fgauge_dump(
 	return 0;
 }
 
+/*add by hehuan for disable long press pwk in revovery   #2020-8-20   begin*/
+static ssize_t mt_kpdpwr_reset_show(struct device *dev,
+                                       struct device_attribute *attr, char *buf)
+{
+
+       int32_t reg_val1 = 0;
+       int32_t reg_val2 = 0;
+
+       reg_val1 = upmu_get_reg_value(MT6357_STRUP_CON12);
+       pr_info("MT6357_STRUP_CON12 = 0x%x \n", reg_val1);
+
+       reg_val2 = upmu_get_reg_value(MT6357_TOP_RST_MISC);
+       pr_info("MT6357_TOP_RST_MISC = 0x%x \n", reg_val2);
+
+       return snprintf(buf, 20, "0x%x  0x%x\n", reg_val1,reg_val2);
+}
+
+static ssize_t mt_kpdpwr_reset_store(struct device *dev,
+                                       struct device_attribute *attr,
+                                       const char *buf, size_t size)
+{
+
+       int32_t value = 0;
+
+       if (kstrtoint(buf, 10, &value) < 0) {
+               dev_notice(dev, "parsing number fail\n");
+               return -EINVAL;
+       }
+
+       if (0 == value){
+               pmic_set_register_value(PMIC_RG_PWRKEY_RST_EN, 0);
+               pmic_set_register_value(PMIC_RG_PWRKEY_RST_TD, 2);
+               pmic_set_register_value(PMIC_RG_STRUP_LONG_PRESS_EXT_EN, 0);
+               pr_info("%s: disable kpdpwr reset, time change to 14S\n", __func__);
+       }else if (1 == value){
+               pmic_set_register_value(PMIC_RG_PWRKEY_RST_EN, 1);
+               pmic_set_register_value(PMIC_RG_PWRKEY_RST_TD, 0);
+               pmic_set_register_value(PMIC_RG_STRUP_LONG_PRESS_EXT_EN, 1);
+               pr_info("%s:  enable kpdpwr reset, time change to 8S \n", __func__);
+       }
+
+       return size;
+}
+
+static DEVICE_ATTR(kpdpwr_reset, 0664, mt_kpdpwr_reset_show, mt_kpdpwr_reset_store);
+/*add by hehuan for disable long press pwk in revovery   #2020-8-20   end*/
+
+
+
 static int fgauge_get_hw_version(struct gauge_device *gauge_dev)
 {
 	return GAUGE_HW_V1000;
@@ -2302,6 +2351,7 @@ static int mt6357_gauge_probe(struct platform_device *pdev)
 
 	mt6357_parse_dt(info, &pdev->dev);
 	platform_set_drvdata(pdev, info);
+	device_create_file(&pdev->dev, &dev_attr_kpdpwr_reset);//add by hehuan for disable long press pwk in revovery   #2020-8-20
 
 	/* Register charger device */
 	info->gauge_dev = gauge_device_register(info->gauge_dev_name,

@@ -1319,9 +1319,11 @@ void EnableALLbySampleRate(unsigned int SampleRate)
 		break;
 	}
 }
-
+extern bool dspg_micbias_status;
 void DisableALLbySampleRate(unsigned int SampleRate)
 {
+	if(dspg_micbias_status)
+		return;
 	pr_debug("%s, APLL1Counter = %d, APLL2Counter = %d, SampleRate = %d\n",
 		 __func__, APLL1Counter, APLL2Counter, SampleRate);
 

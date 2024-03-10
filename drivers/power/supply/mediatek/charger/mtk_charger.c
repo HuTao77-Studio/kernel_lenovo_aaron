@@ -73,6 +73,7 @@
 
 #include "mtk_charger_intf.h"
 #include "mtk_charger_init.h"
+#include "mtk_switch_charging.h"
 
 static struct charger_manager *pinfo;
 static struct list_head consumer_head = LIST_HEAD_INIT(consumer_head);
@@ -518,7 +519,6 @@ int charger_manager_get_zcv(struct charger_consumer *consumer, int idx, u32 *uV)
 	int ret = 0;
 	struct charger_device *pchg;
 
-
 	if (info != NULL) {
 		if (idx == MAIN_CHARGER) {
 			pchg = info->chg1_dev;
@@ -795,6 +795,7 @@ bool is_typec_adapter(struct charger_manager *info)
 			rp != 500 &&
 			info->chr_type != STANDARD_HOST &&
 			info->chr_type != CHARGING_HOST &&
+			info->chr_type != POGO_CHARGER &&
 			mtk_pe20_get_is_connect(info) == false &&
 			mtk_pe_get_is_connect(info) == false &&
 			info->enable_type_c == true)
@@ -917,23 +918,34 @@ void do_sw_jeita_state_machine(struct charger_manager *info)
 
 	/* set CV after temperature changed */
 	/* In normal range, we adjust CV dynamically */
-	if (sw_jeita->sm != TEMP_T2_TO_T3) {
-		if (sw_jeita->sm == TEMP_ABOVE_T4)
-			sw_jeita->cv = info->data.jeita_temp_above_t4_cv;
-		else if (sw_jeita->sm == TEMP_T3_TO_T4)
-			sw_jeita->cv = info->data.jeita_temp_t3_to_t4_cv;
-		else if (sw_jeita->sm == TEMP_T2_TO_T3)
-			sw_jeita->cv = 0;
-		else if (sw_jeita->sm == TEMP_T1_TO_T2)
-			sw_jeita->cv = info->data.jeita_temp_t1_to_t2_cv;
-		else if (sw_jeita->sm == TEMP_T0_TO_T1)
-			sw_jeita->cv = info->data.jeita_temp_t0_to_t1_cv;
-		else if (sw_jeita->sm == TEMP_BELOW_T0)
-			sw_jeita->cv = info->data.jeita_temp_below_t0_cv;
-		else
-			sw_jeita->cv = info->data.battery_cv;
-	} else {
-		sw_jeita->cv = 0;
+	if (sw_jeita->sm == TEMP_ABOVE_T4){
+		sw_jeita->cv = info->data.jeita_temp_above_t4_cv;
+		sw_jeita->cc = info->data.jeita_temp_above_t4_cc;
+		sw_jeita->cic = info->data.jeita_temp_above_t4_cic;
+	}else if (sw_jeita->sm == TEMP_T3_TO_T4){
+		sw_jeita->cv = info->data.jeita_temp_t3_to_t4_cv;
+		sw_jeita->cc = info->data.jeita_temp_t3_to_t4_cc;
+		sw_jeita->cic= info->data.jeita_temp_t3_to_t4_cic;
+	}else if (sw_jeita->sm == TEMP_T2_TO_T3){
+		sw_jeita->cv = info->data.jeita_temp_t2_to_t3_cv;
+		sw_jeita->cc = info->data.jeita_temp_t2_to_t3_cc;
+		sw_jeita->cic = info->data.jeita_temp_t2_to_t3_cic;
+	}else if (sw_jeita->sm == TEMP_T1_TO_T2){
+		sw_jeita->cv = info->data.jeita_temp_t1_to_t2_cv;
+		sw_jeita->cc = info->data.jeita_temp_t1_to_t2_cc;
+		sw_jeita->cic = info->data.jeita_temp_t1_to_t2_cic;
+	}else if (sw_jeita->sm == TEMP_T0_TO_T1){
+		sw_jeita->cv = info->data.jeita_temp_t0_to_t1_cv;
+		sw_jeita->cc = info->data.jeita_temp_t0_to_t1_cc;
+		sw_jeita->cic = info->data.jeita_temp_t0_to_t1_cic;
+	}else if (sw_jeita->sm == TEMP_BELOW_T0){
+		sw_jeita->cv = info->data.jeita_temp_below_t0_cv;
+		sw_jeita->cc = info->data.jeita_temp_below_t0_cc;
+		sw_jeita->cic = info->data.jeita_temp_below_t0_cic;
+	}else{
+		sw_jeita->cv = info->data.battery_cv;
+		sw_jeita->cc = 0;
+		sw_jeita->cic = 0;
 	}
 
 	chr_err("[SW_JEITA]preState:%d newState:%d tmp:%d cv:%d\n",
@@ -1585,8 +1597,10 @@ static void kpoc_power_off_check(struct charger_manager *info)
 				chr_err("Unplug Charger/USB in KPOC mode, shutdown\n");
 				chr_err("%s: system_state=%d\n", __func__,
 					system_state);
-				if (system_state != SYSTEM_POWER_OFF)
+			/*	if (system_state != SYSTEM_POWER_OFF) {
+					msleep(3000);
 					kernel_power_off();
+				}*/
 			}
 		}
 	}
@@ -1684,6 +1698,30 @@ static void mtk_charger_init_timer(struct charger_manager *info)
 		chr_err("%s: register pm failed\n", __func__);
 #endif /* CONFIG_PM */
 }
+#ifdef FACTORY_VERSION
+static void ato_charger_limit_soc(struct charger_manager *info)
+{
+	struct switch_charging_alg_data *swchgalg = info->algorithm_data;
+	int limit_soc;
+
+		limit_soc = battery_get_uisoc();
+
+	if (battery_get_debug_uisoc() != 0xffff)
+		limit_soc = battery_get_debug_uisoc();
+
+	if((limit_soc >= 80) && (swchgalg->state != CHR_ERROR)) {
+		charger_dev_hz_mode(info->chg1_dev, 1);
+		_mtk_charger_do_charging(info, 0);
+		chr_err("ato_charger_limit_soc:disable charging \n");
+	}
+
+	if((limit_soc <= 60) && (swchgalg->state != CHR_CC)) {
+		charger_dev_hz_mode(info->chg1_dev, 0);
+		_mtk_charger_do_charging(info, 1);
+		chr_err("ato_charger_limit_soc:enable charging \n");
+	}
+}
+#endif
 
 static int charger_routine_thread(void *arg)
 {
@@ -1719,7 +1757,10 @@ static int charger_routine_thread(void *arg)
 		}
 
 		is_charger_on = mtk_is_charger_on(info);
-
+#ifdef FACTORY_VERSION
+		if(is_charger_on) 
+			ato_charger_limit_soc(info);
+#endif
 		if (info->charger_thread_polling == true)
 			mtk_charger_start_timer(info);
 
@@ -1748,6 +1789,47 @@ static int charger_routine_thread(void *arg)
 	return 0;
 }
 
+static char get_board[10];
+static int get_board_id(void)
+{
+	char* s1= "";
+
+	s1 = strstr(saved_command_line, "board_id=");
+	if(!s1) {
+		chr_err("hw_id not found in cmdline\n");
+		return -1;
+	}
+	s1 += strlen("board_id=");
+	strncpy(get_board, s1, 5);
+	get_board[5]='\0';
+	chr_err("board_id found in cmdline : %s\n", get_board);
+
+	return 0;
+}
+
+static bool is_Anna_NA = false;
+static bool is_lenovo_Anna_NA(void)
+{
+        char* s1= "";
+	char get_board[10];
+
+        s1 = strstr(saved_command_line, "board_id=");
+        if(!s1) {
+                chr_err("hw_id not found in cmdline\n");
+                return -1;
+        }
+        s1 += strlen("board_id=");
+        strncpy(get_board, s1, 7);
+        get_board[7]='\0';
+        chr_err("board_id found in cmdline : %s\n", get_board);
+
+
+	if(strncmp(get_board, "Anna_NA", 7))
+		return false;
+	else
+		return true;
+}
+
 static int mtk_charger_parse_dt(struct charger_manager *info,
 				struct device *dev)
 {
@@ -1760,6 +1842,8 @@ static int mtk_charger_parse_dt(struct charger_manager *info,
 		chr_err("%s: no device node\n", __func__);
 		return -EINVAL;
 	}
+
+	get_board_id();
 
 	if (of_property_read_string(np, "algorithm_name",
 		&info->algorithm_name) < 0) {
@@ -1786,7 +1870,10 @@ static int mtk_charger_parse_dt(struct charger_manager *info,
 	info->enable_pe_plus = of_property_read_bool(np, "enable_pe_plus");
 	info->enable_pe_2 = of_property_read_bool(np, "enable_pe_2");
 	info->enable_pe_4 = of_property_read_bool(np, "enable_pe_4");
-	info->enable_type_c = of_property_read_bool(np, "enable_type_c");
+	if(is_Anna_NA)
+		info->enable_type_c = of_property_read_bool(np, "anna_na_enable_type_c");
+	else
+		info->enable_type_c = of_property_read_bool(np, "enable_type_c");
 	info->enable_dynamic_mivr =
 			of_property_read_bool(np, "enable_dynamic_mivr");
 	info->disable_pd_dual = of_property_read_bool(np, "disable_pd_dual");
@@ -1800,6 +1887,12 @@ static int mtk_charger_parse_dt(struct charger_manager *info,
 		chr_err("use default BATTERY_CV:%d\n", BATTERY_CV);
 		info->data.battery_cv = BATTERY_CV;
 	}
+	//+ExtB AKITA-8 modify guojunbo.wt 20190527 disable battery temperature protect
+#ifdef CONFIG_MTK_DISABLE_TEMP_PROTECT
+		info->enable_sw_jeita = false;
+		info->data.battery_cv = 4100000;
+#endif
+	//-ExtB AKITA-8 modify guojunbo.wt 20190527 disable battery temperature protect
 
 	if (of_property_read_u32(np, "max_charger_voltage", &val) >= 0)
 		info->data.max_charger_voltage = val;
@@ -1886,7 +1979,7 @@ static int mtk_charger_parse_dt(struct charger_manager *info,
 		info->data.ac_charger_current = AC_CHARGER_CURRENT;
 	}
 
-	info->data.pd_charger_current = 3000000;
+	info->data.pd_charger_current = 2000000;
 
 	if (of_property_read_u32(np, "ac_charger_input_current", &val) >= 0)
 		info->data.ac_charger_input_current = val;
@@ -1942,6 +2035,62 @@ static int mtk_charger_parse_dt(struct charger_manager *info,
 					TA_AC_CHARGING_CURRENT;
 	}
 
+	if (of_property_read_u32(np, "pogo_charger_current", &val) >= 0) {
+		info->data.pogo_charger_current = val;
+	} else {
+		chr_err("use default POGO_CHARGER_CURRENT:%d\n",
+			POGO_CHARGER_CURRENT);
+		info->data.pogo_charger_current = POGO_CHARGER_CURRENT;
+	}
+
+	if (of_property_read_u32(np, "pogo_charger_input_current", &val) >= 0)
+		info->data.pogo_charger_input_current = val;
+	else {
+		chr_err("use default POGO_CHARGER_INPUT_CURRENT:%d\n",
+			POGO_CHARGER_INPUT_CURRENT);
+		info->data.pogo_charger_input_current = POGO_CHARGER_INPUT_CURRENT;
+	}
+
+	/* lenovo Akita */
+	if (!strcmp(get_board, "Akita")){
+		if (of_property_read_u32(np, "atika_ac_charger_current", &val) >= 0) {
+			info->data.ac_charger_current = val;
+		} else {
+			chr_err("use default AC_CHARGER_CURRENT:2000000\n");
+			info->data.ac_charger_current = 2000000;
+		}
+
+		if (of_property_read_u32(np, "atika_ac_charger_input_current", &val) >= 0)
+			info->data.ac_charger_input_current = val;
+		else {
+			chr_err("use default AC_CHARGER_INPUT_CURRENT:2000000\n");
+			info->data.ac_charger_input_current = 2000000;
+		}
+
+		if (of_property_read_u32(np, "atika_non_std_ac_charger_current", &val) >= 0)
+			info->data.non_std_ac_charger_current = val;
+		else {
+			chr_err("use default NON_STD_AC_CHARGER_CURRENT:900000\n");
+			info->data.non_std_ac_charger_current =900000;
+		}
+
+		if (of_property_read_u32(np, "atika_charging_host_charger_current", &val)
+			>= 0) {
+			info->data.charging_host_charger_current = val;
+		} else {
+			chr_err("use default CHARGING_HOST_CHARGER_CURRENT:1500000\n");
+			info->data.charging_host_charger_current =1500000;
+		}
+	}
+
+	if(is_Anna_NA){
+		if (of_property_read_u32(np, "anna_na_non_std_ac_charger_current", &val) >= 0)
+                        info->data.non_std_ac_charger_current = val;
+                else {
+                        chr_err("use default NON_STD_AC_CHARGER_CURRENT:500000\n");
+                        info->data.non_std_ac_charger_current =500000;
+                }
+	}
 	/* sw jeita */
 	if (of_property_read_u32(np, "jeita_temp_above_t4_cv", &val) >= 0)
 		info->data.jeita_temp_above_t4_cv = val;
@@ -2082,6 +2231,218 @@ static int mtk_charger_parse_dt(struct charger_manager *info,
 		chr_err("use default TEMP_NEG_10_THRES:%d\n",
 			TEMP_NEG_10_THRES);
 		info->data.temp_neg_10_thres = TEMP_NEG_10_THRES;
+	}
+        /* sw jeta cc and cic */
+	if (!strcmp(get_board, "Akita")){
+		if (of_property_read_u32(np, "atika_jeita_temp_above_t4_cc", &val) >= 0)
+			info->data.jeita_temp_above_t4_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_ABOVE_T4_CC:%d\n",
+				JEITA_TEMP_ABOVE_T4_CC);
+			info->data.jeita_temp_above_t4_cc = JEITA_TEMP_ABOVE_T4_CC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_t3_to_t4_cc", &val) >= 0)
+			info->data.jeita_temp_t3_to_t4_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_T3_TO_T4_CC:%d\n",
+				JEITA_TEMP_T3_TO_T4_CC);
+			info->data.jeita_temp_t3_to_t4_cc = JEITA_TEMP_T3_TO_T4_CC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_t2_to_t3_cc", &val) >= 0)
+			info->data.jeita_temp_t2_to_t3_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_T2_TO_T3_CC:%d\n",
+				JEITA_TEMP_T2_TO_T3_CC);
+			info->data.jeita_temp_t2_to_t3_cc = JEITA_TEMP_T2_TO_T3_CC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_t1_to_t2_cc", &val) >= 0)
+			info->data.jeita_temp_t1_to_t2_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_T1_TO_T2_CC:%d\n",
+				JEITA_TEMP_T1_TO_T2_CC);
+			info->data.jeita_temp_t1_to_t2_cc = JEITA_TEMP_T1_TO_T2_CC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_t0_to_t1_cc", &val) >= 0)
+			info->data.jeita_temp_t0_to_t1_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_T0_TO_T1_CC:%d\n",
+				JEITA_TEMP_T0_TO_T1_CC);
+			info->data.jeita_temp_t0_to_t1_cc = JEITA_TEMP_T0_TO_T1_CC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_below_t0_cc", &val) >= 0)
+			info->data.jeita_temp_below_t0_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_BELOW_T0_CC:%d\n",
+				JEITA_TEMP_BELOW_T0_CC);
+			info->data.jeita_temp_below_t0_cc = JEITA_TEMP_BELOW_T0_CC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_above_t4_cic", &val) >= 0)
+			info->data.jeita_temp_above_t4_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_ABOVE_T4_CIC:%d\n",
+				JEITA_TEMP_ABOVE_T4_CIC);
+			info->data.jeita_temp_above_t4_cic = JEITA_TEMP_ABOVE_T4_CIC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_t3_to_t4_cic", &val) >= 0)
+			info->data.jeita_temp_t3_to_t4_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_T3_TO_T4_CIC:%d\n",
+				JEITA_TEMP_T3_TO_T4_CIC);
+			info->data.jeita_temp_t3_to_t4_cic = JEITA_TEMP_T3_TO_T4_CIC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_t2_to_t3_cic", &val) >= 0)
+			info->data.jeita_temp_t2_to_t3_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_T2_TO_T3_CIC:%d\n",
+				JEITA_TEMP_T2_TO_T3_CIC);
+			info->data.jeita_temp_t2_to_t3_cic = JEITA_TEMP_T2_TO_T3_CIC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_t1_to_t2_cic", &val) >= 0)
+			info->data.jeita_temp_t1_to_t2_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_T1_TO_T2_CIC:%d\n",
+				JEITA_TEMP_T1_TO_T2_CIC);
+			info->data.jeita_temp_t1_to_t2_cic = JEITA_TEMP_T1_TO_T2_CIC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_t0_to_t1_cic", &val) >= 0)
+			info->data.jeita_temp_t0_to_t1_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_T0_TO_T1_CIC:%d\n",
+				JEITA_TEMP_T0_TO_T1_CIC);
+			info->data.jeita_temp_t0_to_t1_cic = JEITA_TEMP_T0_TO_T1_CIC;
+		}
+
+		if (of_property_read_u32(np, "atika_jeita_temp_below_t0_cic", &val) >= 0)
+			info->data.jeita_temp_below_t0_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_BELOW_T0_CIC:%d\n",
+				JEITA_TEMP_BELOW_T0_CIC);
+			info->data.jeita_temp_below_t0_cic = JEITA_TEMP_BELOW_T0_CIC;
+		}
+	}else{
+		if (of_property_read_u32(np, "jeita_temp_above_t4_cc", &val) >= 0)
+			info->data.jeita_temp_above_t4_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_ABOVE_T4_CC:%d\n",
+				JEITA_TEMP_ABOVE_T4_CC);
+			info->data.jeita_temp_above_t4_cc = JEITA_TEMP_ABOVE_T4_CC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_t3_to_t4_cc", &val) >= 0)
+			info->data.jeita_temp_t3_to_t4_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_T3_TO_T4_CC:%d\n",
+				JEITA_TEMP_T3_TO_T4_CC);
+			info->data.jeita_temp_t3_to_t4_cc = JEITA_TEMP_T3_TO_T4_CC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_t2_to_t3_cc", &val) >= 0)
+			info->data.jeita_temp_t2_to_t3_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_T2_TO_T3_CC:%d\n",
+				JEITA_TEMP_T2_TO_T3_CC);
+			info->data.jeita_temp_t2_to_t3_cc = JEITA_TEMP_T2_TO_T3_CC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_t1_to_t2_cc", &val) >= 0)
+			info->data.jeita_temp_t1_to_t2_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_T1_TO_T2_CC:%d\n",
+				JEITA_TEMP_T1_TO_T2_CC);
+			info->data.jeita_temp_t1_to_t2_cc = JEITA_TEMP_T1_TO_T2_CC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_t0_to_t1_cc", &val) >= 0)
+			info->data.jeita_temp_t0_to_t1_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_T0_TO_T1_CC:%d\n",
+				JEITA_TEMP_T0_TO_T1_CC);
+			info->data.jeita_temp_t0_to_t1_cc = JEITA_TEMP_T0_TO_T1_CC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_below_t0_cc", &val) >= 0)
+			info->data.jeita_temp_below_t0_cc = val;
+		else {
+			chr_err("use default JEITA_TEMP_BELOW_T0_CC:%d\n",
+				JEITA_TEMP_BELOW_T0_CC);
+			info->data.jeita_temp_below_t0_cc = JEITA_TEMP_BELOW_T0_CC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_above_t4_cic", &val) >= 0)
+			info->data.jeita_temp_above_t4_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_ABOVE_T4_CIC:%d\n",
+				JEITA_TEMP_ABOVE_T4_CIC);
+			info->data.jeita_temp_above_t4_cic = JEITA_TEMP_ABOVE_T4_CIC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_t3_to_t4_cic", &val) >= 0)
+			info->data.jeita_temp_t3_to_t4_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_T3_TO_T4_CIC:%d\n",
+				JEITA_TEMP_T3_TO_T4_CIC);
+			info->data.jeita_temp_t3_to_t4_cic = JEITA_TEMP_T3_TO_T4_CIC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_t2_to_t3_cic", &val) >= 0)
+			info->data.jeita_temp_t2_to_t3_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_T2_TO_T3_CIC:%d\n",
+				JEITA_TEMP_T2_TO_T3_CIC);
+			info->data.jeita_temp_t2_to_t3_cic = JEITA_TEMP_T2_TO_T3_CIC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_t1_to_t2_cic", &val) >= 0)
+			info->data.jeita_temp_t1_to_t2_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_T1_TO_T2_CIC:%d\n",
+				JEITA_TEMP_T1_TO_T2_CIC);
+			info->data.jeita_temp_t1_to_t2_cic = JEITA_TEMP_T1_TO_T2_CIC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_t0_to_t1_cic", &val) >= 0)
+			info->data.jeita_temp_t0_to_t1_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_T0_TO_T1_CIC:%d\n",
+				JEITA_TEMP_T0_TO_T1_CIC);
+			info->data.jeita_temp_t0_to_t1_cic = JEITA_TEMP_T0_TO_T1_CIC;
+		}
+
+		if (of_property_read_u32(np, "jeita_temp_below_t0_cic", &val) >= 0)
+			info->data.jeita_temp_below_t0_cic = val;
+		else {
+			chr_err("use default JEITA_TEMP_BELOW_T0_CIC:%d\n",
+				JEITA_TEMP_BELOW_T0_CIC);
+			info->data.jeita_temp_below_t0_cic = JEITA_TEMP_BELOW_T0_CIC;
+		}
+	}
+
+	if(is_Anna_NA){
+                if (of_property_read_u32(np, "anna_na_jeita_temp_t3_to_t4_cc", &val) >= 0)
+                        info->data.jeita_temp_t3_to_t4_cc = val;
+                else {
+                        chr_err("use default JEITA_TEMP_T3_TO_T4_CC:%d\n",
+                                JEITA_TEMP_T3_TO_T4_CC);
+                        info->data.jeita_temp_t3_to_t4_cc = JEITA_TEMP_T3_TO_T4_CC;
+                }
+
+                if (of_property_read_u32(np, "anna_na_jeita_temp_t3_to_t4_cic", &val) >= 0)
+                        info->data.jeita_temp_t3_to_t4_cic = val;
+                else {
+                        chr_err("use default JEITA_TEMP_T3_TO_T4_CIC:%d\n",
+                                JEITA_TEMP_T3_TO_T4_CIC);
+                        info->data.jeita_temp_t3_to_t4_cic = JEITA_TEMP_T3_TO_T4_CIC;
+                }
 	}
 
 	/* battery temperature protection */
@@ -3069,6 +3430,73 @@ static int proc_dump_log_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+int batt_supply_enable(struct charger_consumer *consumer, bool en)
+{
+	struct charger_manager *info = consumer->cm;
+	struct switch_charging_alg_data *swchgalg = info->algorithm_data;
+
+	if(mt_get_charger_type() !=CHARGER_UNKNOWN){
+		if (en ) {
+			charger_dev_hz_mode(info->chg1_dev, 1);
+			if(swchgalg->state != CHR_ERROR){
+				_mtk_charger_do_charging(info, 0);
+			}
+
+			chr_err("batt_supply_enable: enable\n");
+			return 1;
+		} else {
+			charger_dev_hz_mode(info->chg1_dev, 0);
+			chr_err("batt_supply_enable:disable\n");
+			return 0;
+		}
+	}
+		chr_err("batt_supply_enable:test\n");
+	return 0;
+}
+
+int batt_charging_enable(struct charger_consumer *consumer, bool en)
+{
+	struct charger_manager *info = consumer->cm;
+	struct switch_charging_alg_data *swchgalg = info->algorithm_data;
+
+	if(mt_get_charger_type() !=CHARGER_UNKNOWN){
+		if (en && (swchgalg->state != CHR_CC)) {
+			charger_dev_hz_mode(info->chg1_dev, 0);
+			_mtk_charger_do_charging(info, 1);
+			chr_err("batt_charging_enable:enable\n");
+			return 1;
+		} else if(!en && (swchgalg->state != CHR_ERROR)){
+			charger_dev_hz_mode(info->chg1_dev, 0);
+			_mtk_charger_do_charging(info, 0);
+			chr_err("batt_charging_enable:disable\n");
+			return 0;
+		}
+	}
+	return 0;
+}
+
+int batt_slate_mode_control(struct charger_consumer *consumer, bool en)
+{	
+	struct charger_manager *info = consumer->cm;
+	struct switch_charging_alg_data *swchgalg = info->algorithm_data;
+
+
+	if (en && (swchgalg->state != CHR_ERROR)) {
+		charger_dev_hz_mode(info->chg1_dev, 1);
+		_mtk_charger_do_charging(info, 0);
+	   	chr_err("batt_slate_mode_control:disable charging\n");
+		return 1;
+	} else if(!en && (swchgalg->state != CHR_CC)){
+		charger_dev_hz_mode(info->chg1_dev, 0);
+	   	_mtk_charger_do_charging(info, 1);
+	   	chr_err("batt_slate_mode_control:enable charging\n");
+		return 0;
+	}
+
+	return 0;
+}
+
+
 static ssize_t proc_write(
 	struct file *file, const char __user *buffer,
 	size_t count, loff_t *f_pos)
@@ -3103,6 +3531,25 @@ void charger_debug_init(void)
 		charger_dir, &charger_dump_log_proc_fops);
 }
 
+int batt_charging_control(struct charger_consumer *consumer, bool en)
+{
+        struct charger_manager *info = consumer->cm;
+        struct switch_charging_alg_data *swchgalg = info->algorithm_data;
+
+
+        if (en && (swchgalg->state != CHR_ERROR)) {
+                _mtk_charger_do_charging(info, 0);
+                chr_err("batt_charging_control:disable charging\n");
+                return 1;
+        } else if(!en && (swchgalg->state != CHR_CC)){
+                _mtk_charger_do_charging(info, 1);
+                chr_err("batt_charging_control:enable charging\n");
+                return 0;
+        }
+
+        return 0;
+}
+
 static int mtk_charger_probe(struct platform_device *pdev)
 {
 	struct charger_manager *info = NULL;
@@ -3112,6 +3559,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	int ret;
 
 	chr_err("%s: starts\n", __func__);
+
+	is_Anna_NA = is_lenovo_Anna_NA();
 
 	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
 	if (!info)

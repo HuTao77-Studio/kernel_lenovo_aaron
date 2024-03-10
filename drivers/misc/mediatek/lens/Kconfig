@@ -28,6 +28,24 @@ config MTK_LENS_DUMMYLENS_SUPPORT
 	  lens driver for the camera sensor module
 	  Set as y if the driver is used in this project
 
+config MTK_LENS_CN3937AF_SUPPORT
+	bool "CN3937AF Lens Driver"
+	default n
+	help
+	  CN3937AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_CN3927AF_SUPPORT
+	bool "CN3927AF Lens Driver"
+	default n
+	help
+	  CN3927AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
 config MTK_LENS_BU63165AF_SUPPORT
 	bool "BU63165AF Lens Driver"
 	default n

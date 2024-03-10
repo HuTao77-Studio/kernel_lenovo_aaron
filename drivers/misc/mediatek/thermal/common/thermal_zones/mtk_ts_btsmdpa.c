@@ -596,6 +596,23 @@ static __s16 mtk_ts_btsmdpa_volt_to_temp(__u32 dwVolt)
 
 	return BTSMDPA_TMP;
 }
+static char get_board[25];
+static int get_board_id(void)
+{
+        char* s1= "";
+
+        s1 = strstr(saved_command_line, "board_id=");
+        if(!s1) {
+                mtkts_btsmdpa_dprintk("hw_id not found in cmdline\n");
+                return -1;
+        }
+        //s1 += strlen("board_id=");
+        strncpy(get_board, s1, 20);
+        //get_board[10]='\0';
+        mtkts_btsmdpa_dprintk("board_id found in cmdline : %s\n", get_board);
+
+        return 0;
+}
 
 static int get_hw_btsmdpa_temp(void)
 {
@@ -668,7 +685,11 @@ static int get_hw_btsmdpa_temp(void)
 #endif
 	/* ret = ret*1800/4096;//82's ADC power */
 	mtkts_btsmdpa_dprintk("APtery output mV = %d\n", ret);
-	output = mtk_ts_btsmdpa_volt_to_temp(ret);
+	get_board_id();
+	if (strstr(get_board, "WIFI"))
+		output = 25;
+        else
+		output = mtk_ts_btsmdpa_volt_to_temp(ret);
 	mtkts_btsmdpa_dprintk("BTSMDPA output temperature = %d\n", output);
 	return output;
 }

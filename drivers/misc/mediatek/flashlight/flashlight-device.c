@@ -79,6 +79,11 @@ const struct flashlight_device_id flashlight_id[] = {
 	{0, 0, 0, "flashlights-mt6370", 0, 0},
 	{0, 1, 0, "flashlights-mt6370", 1, 0},
 };
+#elif defined(mt6765)
+const struct flashlight_device_id flashlight_id[] = {
+       /* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
+       {0, 0, 0, "flashlights_led191", 0, 0},
+};
 #elif defined(mt6799)
 const struct flashlight_device_id flashlight_id[] = {
 	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */

@@ -28,7 +28,7 @@
 #include <linux/kthread.h>
 #include <linux/cpu.h>
 #include <linux/version.h>
-#include <linux/wakelock.h>
+#include <linux/pm_wakeup.h>
 
 #include "inc/pd_dbg_info.h"
 #include "inc/tcpci.h"
@@ -375,8 +375,8 @@ static int rt1711_regmap_init(struct rt1711_chip *chip)
 	if ((!props->name) || (!props->aliases))
 		return -ENOMEM;
 
-	strlcpy((char *)props->name, name, strlen(name)+1);
-	strlcpy((char *)props->aliases, name, strlen(name)+1);
+	strlcpy((char *)props->name, name, len+1);
+	strlcpy((char *)props->aliases, name, len+1);
 	props->io_log_en = 0;
 
 	chip->m_dev = rt_regmap_device_register(props,
@@ -1207,6 +1207,28 @@ static int rt1711_set_bist_test_mode(struct tcpc_device *tcpc, bool en)
 	return rt1711_i2c_write8(tcpc, TCPC_V10_REG_TCPC_CTRL, data);
 }
 #endif /* CONFIG_USB_POWER_DELIVERY */
+static int rt1711_get_alert_mask(struct tcpc_device *tcpc, uint32_t *mask)
+{
+        int ret;
+#ifdef CONFIG_TCPC_VSAFE0V_DETECT_IC
+        uint8_t v2;
+#endif
+
+        ret = rt1711_i2c_read16(tcpc, TCPC_V10_REG_ALERT_MASK);
+        if(ret < 0)
+                return ret;
+        *mask = (uint16_t)ret;
+
+#ifdef CONFIG_TCPC_VSAFE0V_DETECT_IC
+        ret = rt1711_i2c_read8(tcpc, RT1711H_REG_RT_MASK);
+        if(ret < 0)
+                return ret;
+
+        v2 = (uint8_t)ret;
+        *mask |= v2 << 16;
+#endif
+        return 0;
+}
 
 static struct tcpc_ops rt1711_tcpc_ops = {
 	.init = rt1711_tcpc_init,
@@ -1221,6 +1243,7 @@ static struct tcpc_ops rt1711_tcpc_ops = {
 	.set_low_rp_duty = rt1711_set_low_rp_duty,
 	.set_vconn = rt1711_set_vconn,
 	.deinit = rt1711_tcpc_deinit,
+	.get_alert_mask = rt1711_get_alert_mask,
 
 #ifdef CONFIG_TCPC_LOW_POWER_MODE
 	.is_low_power_mode = rt1711_is_low_power_mode,
@@ -1336,6 +1359,11 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 	u32 val, len;
 	const char *name = "default";
 
+        np = of_find_node_by_name(NULL, "type_c_port0");
+        if (!np) {
+                pr_err("%s find node type_c_port0 fail\n", __func__);
+                return -ENODEV;
+        }
 	desc = devm_kzalloc(dev, sizeof(*desc), GFP_KERNEL);
 	if (!desc)
 		return -ENOMEM;
@@ -1393,7 +1421,7 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 	if (!desc->name)
 		return -ENOMEM;
 
-	strlcpy((char *)desc->name, name, strlen(name)+1);
+	strlcpy((char *)desc->name, name, len+1);
 
 	chip->tcpc_desc = desc;
 
@@ -1509,7 +1537,7 @@ static int rt1711_i2c_probe(struct i2c_client *client,
 	sema_init(&chip->suspend_lock, 1);
 	i2c_set_clientdata(client, chip);
 	INIT_DELAYED_WORK(&chip->poll_work, rt1711_poll_work);
-	wake_lock_init(&chip->irq_wake_lock, WAKE_LOCK_SUSPEND,
+	wakeup_source_init(&chip->irq_wake_lock,
 		"rt1711h_irq_wakelock");
 
 	chip->chip_id = chip_id;
@@ -1620,11 +1648,13 @@ static const struct dev_pm_ops rt1711_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(
 			rt1711_i2c_suspend,
 			rt1711_i2c_resume)
+#ifdef CONFIG_PM_RUNTIME
 	SET_RUNTIME_PM_OPS(
 		rt1711_pm_suspend_runtime,
 		rt1711_pm_resume_runtime,
 		NULL
 	)
+#endif /* CONFIG_PM_RUNTIME */
 };
 #define RT1711_PM_OPS	(&rt1711_pm_ops)
 #else

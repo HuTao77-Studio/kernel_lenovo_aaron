@@ -96,7 +96,8 @@ void pd_chrdet_int_handler(void)
 		if (boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT
 			|| boot_mode == LOW_POWER_OFF_CHARGING_BOOT) {
 			pr_notice("[%s] Unplug Charger/USB\n", __func__);
-			kernel_power_off();
+			//msleep(3000);
+			//kernel_power_off();
 		}
 	}
 

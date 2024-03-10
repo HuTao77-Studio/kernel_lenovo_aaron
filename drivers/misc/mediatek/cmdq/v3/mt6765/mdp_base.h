@@ -51,4 +51,5 @@ static u32 mdp_base[] = {
 	[ENGBASE_IMGSYS] = 0x15020000,
 	[ENGBASE_ISP_DIP1] = 0x15022000,
 };
+
 #endif

@@ -189,6 +189,18 @@ config MTK_HP_ANASWITCH
 	  Only enable this when you have headphone analog switch
 	  If you say Y, enable MTK_HP_ANASWITCH
 
+config SND_SOC_AW87519
+	tristate "SoC Audio for awinic AW87519 Smart K PA"
+	depends on I2C
+	help
+	  This option enables support for AW87519 Smart K PA
+
+config SND_SOC_AC107
+	tristate "SoC Audio for X-Power AC107"
+	depends on I2C
+	help
+	  This option enables support for AC107
+
 config SND_SOC_MTK_BTCVSD
 	bool "MTK BT CVSD ALSA ARICHITECTURE"
 	default n
@@ -250,3 +262,5 @@ config SND_SOC_MTK_AUDIO_DSP
 	  that can be used with other platforms
 	  Select Y if you have such device.
 	  If unsure select "N".
+
+source sound/soc/mediatek/dbmdx/Kconfig

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 MediaTek Inc.
+ * Copyright (C) 2018 MediaTek Inc.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -34,7 +34,7 @@
 #include "kd_imgsensor_define.h"
 #include "kd_imgsensor_errcode.h"
 
-enum{
+enum IMGSENSOR_MODE {
 	IMGSENSOR_MODE_INIT,
 	IMGSENSOR_MODE_PREVIEW,
 	IMGSENSOR_MODE_CAPTURE,
@@ -46,7 +46,7 @@ enum{
 	IMGSENSOR_MODE_CUSTOM3,
 	IMGSENSOR_MODE_CUSTOM4,
 	IMGSENSOR_MODE_CUSTOM5,
-} IMGSENSOR_MODE;
+};
 
 struct imgsensor_mode_struct {
 	kal_uint32 pclk;
@@ -60,88 +60,79 @@ struct imgsensor_mode_struct {
 	kal_uint16 grabwindow_height;
 
 	kal_uint8 mipi_data_lp2hs_settle_dc;
-
+	kal_uint32 mipi_pixel_rate;
 	/*	 following for GetDefaultFramerateByScenario()	*/
 	kal_uint16 max_framerate;
-
-} imgsensor_mode_struct;
+};
 
 /* SENSOR PRIVATE STRUCT FOR VARIABLES*/
 struct imgsensor_struct {
-	kal_uint8 mirror;				//mirrorflip information
-
-	kal_uint8 sensor_mode; //record IMGSENSOR_MODE enum value
-
-	kal_uint32 shutter;				//current shutter
-	kal_uint16 gain;				//current gain
-
-	kal_uint32 pclk;				//current pclk
-
-	kal_uint32 frame_length;		//current framelength
-	kal_uint32 line_length;			//current linelength
-
-	kal_uint32 min_frame_length; //current min framelength to max
-	kal_int32 dummy_pixel;			//current dummypixel
-	kal_int32 dummy_line;			//current dummline
-
-	kal_uint16 current_fps;			//current max fps
-	kal_bool   autoflicker_en; //record autoflicker enable or disable
-	kal_bool test_pattern; //record test pattern mode or not
-	enum MSDK_SCENARIO_ID_ENUM current_scenario_id; //current scenario
-	kal_bool  ihdr_en;				//ihdr enable or disable
-
-	kal_uint8 i2c_write_id; //record current sensor's i2c write id
-} imgsensor_struct;
+	kal_uint8 mirror;
+	kal_uint8 sensor_mode;
+	kal_uint32 shutter;
+	kal_uint16 gain;
+	kal_uint32 pclk;
+	kal_uint32 frame_length;
+	kal_uint32 line_length;
+	kal_uint32 min_frame_length;
+	kal_uint16 dummy_pixel;
+	kal_uint16 dummy_line;
+	kal_uint16 current_fps;
+	kal_bool   autoflicker_en;
+	kal_bool   test_pattern;
+	enum MSDK_SCENARIO_ID_ENUM current_scenario_id;
+	kal_uint8  ihdr_en;
+	kal_uint8 i2c_write_id;
+};
 
 /* SENSOR PRIVATE STRUCT FOR CONSTANT*/
 struct imgsensor_info_struct {
-	kal_uint16 sensor_id; //record sensor id defined in Kd_imgsensor.h
-	kal_uint32 checksum_value; //checksum value for Camera Auto Test
-	struct imgsensor_mode_struct pre; //preview scenario
-	struct imgsensor_mode_struct cap; //capture scenario
-	struct imgsensor_mode_struct cap1; //capture for PIP 24fps
-	struct imgsensor_mode_struct cap2; //capture for PIP 15ps
-	struct imgsensor_mode_struct normal_video;//normal video info
-	struct imgsensor_mode_struct hs_video; //high speed video relative info
-	struct imgsensor_mode_struct slim_video; //slim video for VT
-	struct imgsensor_mode_struct custom1; //custom1 scenario relative info
-	struct imgsensor_mode_struct custom2; //custom2 scenario relative info
-	struct imgsensor_mode_struct custom3; //custom3 scenario relative info
-	struct imgsensor_mode_struct custom4; //custom4 scenario relative info
-	struct imgsensor_mode_struct custom5; //custom5 scenario relative info
+	kal_uint32 sensor_id;
+	kal_uint32 checksum_value;
+	struct imgsensor_mode_struct pre;
+	struct imgsensor_mode_struct cap;
+	struct imgsensor_mode_struct cap1;
+	struct imgsensor_mode_struct cap2;
+	struct imgsensor_mode_struct normal_video;
+	struct imgsensor_mode_struct hs_video;
+	struct imgsensor_mode_struct slim_video;
+	struct imgsensor_mode_struct custom1;
+	struct imgsensor_mode_struct custom2;
+	struct imgsensor_mode_struct custom3;
+	struct imgsensor_mode_struct custom4;
+	struct imgsensor_mode_struct custom5;
 
-	kal_uint8  ae_shut_delay_frame; //shutter delay frame for AE cycle
-	kal_uint8  ae_sensor_gain_delay_frame; //sensorgaindelfra for AEcycle
-	kal_uint8  ae_ispGain_delay_frame; //ispgaindelayframe for AEcycle
-	kal_uint8  ihdr_support;		//1, support; 0,not support
-	kal_uint8  ihdr_le_firstline;	//1,le first ; 0, se first
-	kal_uint8  sensor_mode_num;		//support sensor mode num
+	kal_uint8  ae_shut_delay_frame;
+	kal_uint8  ae_sensor_gain_delay_frame;
+	kal_uint8  ae_ispGain_delay_frame;
+	kal_uint8  ihdr_support;
+	kal_uint8  ihdr_le_firstline;
+	kal_uint8  sensor_mode_num;
+	kal_uint8  cap_delay_frame;
+	kal_uint8  pre_delay_frame;
+	kal_uint8  video_delay_frame;
+	kal_uint8  hs_video_delay_frame;
+	kal_uint8  slim_video_delay_frame;
+	kal_uint8  custom1_delay_frame;
+	kal_uint8  custom2_delay_frame;
+	kal_uint8  custom3_delay_frame;
+	kal_uint8  custom4_delay_frame;
+	kal_uint8  custom5_delay_frame;
 
-	kal_uint8  cap_delay_frame;		//enter capture delay frame num
-	kal_uint8  pre_delay_frame;		//enter preview delay frame num
-	kal_uint8  video_delay_frame; //enter video delay frame num
-	kal_uint8  hs_video_delay_frame; //enter high speed videodelayframenum
-	kal_uint8  slim_video_delay_frame; //enter slim video delay frame num
-	kal_uint8  custom1_delay_frame;     //enter custom1 delay frame num
-	kal_uint8  custom2_delay_frame;     //enter custom1 delay frame num
-	kal_uint8  custom3_delay_frame;     //enter custom1 delay frame num
-	kal_uint8  custom4_delay_frame;     //enter custom1 delay frame num
-	kal_uint8  custom5_delay_frame;     //enter custom1 delay frame num
+	kal_uint8  margin;
+	kal_uint32 min_shutter;
+	kal_uint32 max_frame_length;
 
-	kal_uint8  margin; //sensor framelength & shutter margin
-	kal_uint32 min_shutter; //min shutter
-	kal_uint32 max_frame_length; //maxframelengthbysensor reg's limitation
-
-	kal_uint8  isp_driving_current; //mclk driving current
-	kal_uint8  sensor_interface_type;//sensor_interface_type
+	kal_uint8  isp_driving_current;
+	kal_uint8  sensor_interface_type;
 	kal_uint8  mipi_sensor_type;
 	kal_uint8  mipi_settle_delay_mode;
 	kal_uint8  sensor_output_dataformat;
 	kal_uint8  mclk;
 
-	kal_uint8  mipi_lane_num;		//mipi lane num
+	kal_uint8  mipi_lane_num;
 	kal_uint8  i2c_addr_table[5];
-	kal_uint32  i2c_speed;     //i2c speed
+	kal_uint32  i2c_speed;
 } imgsensor_info_struct;
 
 

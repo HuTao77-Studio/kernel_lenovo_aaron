@@ -676,8 +676,15 @@ static void input_dev_release_keys(struct input_dev *dev)
 	bool need_sync = false;
 	int code;
 
+#if IS_ENABLED(CONFIG_INPUT_SAR_SX9328) || IS_ENABLED(CONFIG_INPUT_SAR_SX9311)
+    	bool need_set1 = false, need_set2 = false;
+#endif
 	if (is_event_supported(EV_KEY, dev->evbit, EV_MAX)) {
 		for_each_set_bit(code, dev->key, KEY_CNT) {
+			#if IS_ENABLED(CONFIG_INPUT_SAR_SX9328) || IS_ENABLED(CONFIG_INPUT_SAR_SX9311)
+            		if((code == 0xfd) || (code == 0xfe)) // M8AnnaANNA,xiaweigong.wt 20200722,bugfix it is for sar sensor, suspend not releaser the keys 
+                		continue;
+			#endif
 			input_pass_event(dev, EV_KEY, code, 0);
 			need_sync = true;
 		}
@@ -685,7 +692,23 @@ static void input_dev_release_keys(struct input_dev *dev)
 		if (need_sync)
 			input_pass_event(dev, EV_SYN, SYN_REPORT, 1);
 
+		#if IS_ENABLED(CONFIG_INPUT_SAR_SX9328) || IS_ENABLED(CONFIG_INPUT_SAR_SX9311)
+        	if(test_bit(0xfd, dev->key)){  //
+            		need_set1 = true;
+        	}
+	    	if(test_bit(0xfe, dev->key)){  //
+            		need_set2 = true;
+        	}
+		#endif
 		memset(dev->key, 0, sizeof(dev->key));
+		#if IS_ENABLED(CONFIG_INPUT_SAR_SX9328) || IS_ENABLED(CONFIG_INPUT_SAR_SX9311)
+        	if(need_set1 == true){
+            		__set_bit(0xfd, dev->key);
+        	}
+       	 	if(need_set2 == true){
+            		__set_bit(0xfe, dev->key);
+        	}
+		#endif
 	}
 }
 
@@ -850,18 +873,16 @@ static int input_default_setkeycode(struct input_dev *dev,
 		}
 	}
 
-	if (*old_keycode <= KEY_MAX) {
-		__clear_bit(*old_keycode, dev->keybit);
-		for (i = 0; i < dev->keycodemax; i++) {
-			if (input_fetch_keycode(dev, i) == *old_keycode) {
-				__set_bit(*old_keycode, dev->keybit);
-				/* Setting the bit twice is useless, so break */
-				break;
-			}
+	__clear_bit(*old_keycode, dev->keybit);
+	__set_bit(ke->keycode, dev->keybit);
+
+	for (i = 0; i < dev->keycodemax; i++) {
+		if (input_fetch_keycode(dev, i) == *old_keycode) {
+			__set_bit(*old_keycode, dev->keybit);
+			break; /* Setting the bit twice is useless, so break */
 		}
 	}
 
-	__set_bit(ke->keycode, dev->keybit);
 	return 0;
 }
 
@@ -917,13 +938,9 @@ int input_set_keycode(struct input_dev *dev,
 	 * Simulate keyup event if keycode is not present
 	 * in the keymap anymore
 	 */
-	if (old_keycode > KEY_MAX) {
-		dev_warn(dev->dev.parent ?: &dev->dev,
-			 "%s: got too big old keycode %#x\n",
-			 __func__, old_keycode);
-	} else if (test_bit(EV_KEY, dev->evbit) &&
-		   !is_event_supported(old_keycode, dev->keybit, KEY_MAX) &&
-		   __test_and_clear_bit(old_keycode, dev->key)) {
+	if (test_bit(EV_KEY, dev->evbit) &&
+	    !is_event_supported(old_keycode, dev->keybit, KEY_MAX) &&
+	    __test_and_clear_bit(old_keycode, dev->key)) {
 		struct input_value vals[] =  {
 			{ EV_KEY, old_keycode, 0 },
 			input_value_sync

@@ -21,6 +21,8 @@
 #include <mt-plat/mtk_rtc.h>
 #include <asm/system_misc.h>
 #include <linux/console.h>
+#include <linux/power_supply.h>
+#include <mt-plat/charger_type.h>
 #ifdef CONFIG_MTK_SECURITY_SW_SUPPORT
 #include <sec_hal.h>
 #endif
@@ -714,6 +716,35 @@ static int mtk_arch_reset_handle(struct notifier_block *this,
 	pr_info("ARCH_RESET end!!!!\n");
 	return NOTIFY_DONE;
 }
+#ifdef FACTORY_VERSION
+static struct power_supply *chrdet_psy;
+static struct notifier_block mtk_poweroff_handler;
+static int mtk_poweroff_notifier(struct notifier_block *nb,
+				    unsigned long code, void *data)
+{
+	union power_supply_propval propval;
+	enum charger_type chr_type;
+	int ret;
+
+        chrdet_psy = power_supply_get_by_name("charger");
+        if(!chrdet_psy) {
+                pr_err("power_supply_get_by_name failed\n");
+        } else {
+		ret = power_supply_get_property(chrdet_psy, POWER_SUPPLY_PROP_CHARGE_TYPE, &propval);
+		if(ret < 0) {
+			pr_err("power_supply_get_property CHARGE_TYPE failed\n");
+		} else {
+			chr_type = propval.intval;
+			if (code == SYS_POWER_OFF && (CHARGER_UNKNOWN != chr_type)) {
+				rtc_mark_meta_poweroff();
+				pr_info("mtk_poweroff_notifier\n");
+			}
+		}
+	}
+
+	return NOTIFY_DONE;
+}
+#endif
 
 static int __init mtk_arch_reset_init(void)
 {
@@ -728,6 +759,13 @@ static int __init mtk_arch_reset_init(void)
 	if (ret)
 		pr_notice("ARCH_RESET cannot register mtk_restart_handler!!!!\n");
 	pr_info("ARCH_RESET register mtk_restart_handler  ok!!!!\n");
+#ifdef FACTORY_VERSION
+	mtk_poweroff_handler.notifier_call = mtk_poweroff_notifier;
+	ret = register_reboot_notifier(&mtk_poweroff_handler);
+	if (ret)
+		pr_notice("ARCH_RESET cannot register mtk_poweroff_notifier!!!!\n");
+	pr_info("ARCH_RESET register mtk_poweroff_notifier  ok!!!!\n");
+#endif
 	return ret;
 }
 

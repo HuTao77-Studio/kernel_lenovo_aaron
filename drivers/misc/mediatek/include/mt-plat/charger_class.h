@@ -66,6 +66,9 @@ struct charger_ops {
 	int (*enable_chip)(struct charger_device *dev, bool en);
 	int (*is_chip_enabled)(struct charger_device *dev, bool *en);
 
+	/* enable/disable shipping mode */
+	int (*shipping_mode_enable)(struct charger_device *dev, bool en);
+
 	/* get/set charging current*/
 	int (*get_charging_current)(struct charger_device *dev, u32 *uA);
 	int (*set_charging_current)(struct charger_device *dev, u32 uA);
@@ -155,6 +158,7 @@ struct charger_ops {
 	int (*enable_usbid_floating)(struct charger_device *dev, bool en);
 	int (*enable_hidden_mode)(struct charger_device *dev, bool en);
 	int (*get_ctd_dischg_status)(struct charger_device *dev, u8 *status);
+	int (*hz_mode)(struct charger_device *chg_dev, bool en);
 };
 
 static inline void *charger_dev_get_drvdata(
@@ -242,6 +246,8 @@ extern int charger_dev_enable_otg(
 	struct charger_device *charger_dev, bool en);
 extern int charger_dev_enable_discharge(
 	struct charger_device *charger_dev, bool en);
+extern int charger_dev_shipping_mode_enable(
+	struct charger_device *charger_dev, bool en);
 extern int charger_dev_set_boost_current_limit(
 	struct charger_device *charger_dev, u32 uA);
 extern int charger_dev_get_zcv(
@@ -312,6 +318,10 @@ extern int unregister_charger_device_notifier(
 				struct notifier_block *nb);
 extern int charger_dev_notify(
 	struct charger_device *charger_dev, int event);
+extern int charger_dev_hz_mode(struct charger_device *chg_dev, bool en);
+extern int pogo_enable_otg(bool en);
+extern int pogo_enable_wrx(bool en);
+extern int pogo_get_state(void);
 
 
 #endif /*LINUX_POWER_CHARGER_CLASS_H*/

@@ -1,16 +1,3 @@
-/*
- * Copyright (C) 2018 MediaTek Inc.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /*****************************************************************************
  *
  * Filename:
@@ -30,7 +17,7 @@
 #define _GC2375HMIPI_SENSOR_H
 
 /* SENSOR MIRROR FLIP INFO */
-#define GC2375H_MIRROR_FLIP_ENABLE    0
+#define GC2375H_MIRROR_FLIP_ENABLE    1
 #if GC2375H_MIRROR_FLIP_ENABLE
 #define GC2375H_MIRROR         0xd7
 #define GC2375H_BLK_Select1_H  0x3c
@@ -45,9 +32,7 @@
 #define GC2375H_BLK_Select2_L  0x03
 #endif
 
-
-
-enum IMGSENSOR_MODE {
+enum{
 	IMGSENSOR_MODE_INIT,
 	IMGSENSOR_MODE_PREVIEW,
 	IMGSENSOR_MODE_CAPTURE,
@@ -85,6 +70,7 @@ struct imgsensor_struct {
 	kal_bool   autoflicker_en;
 	kal_bool   test_pattern;
 	enum MSDK_SCENARIO_ID_ENUM current_scenario_id;
+        //kal_uint32 current_scenario_id;
 	kal_uint8  ihdr_en;
 	kal_uint8 i2c_write_id;
 };
@@ -123,8 +109,7 @@ struct imgsensor_info_struct {
 	kal_uint8  i2c_addr_table[5];
 };
 
-extern int iReadRegI2C(u8 *a_pSendData, u16 a_sizeSendData,
-	u8 *a_pRecvData, u16 a_sizeRecvData, u16 i2cId);
+extern int iReadRegI2C(u8 *a_pSendData, u16 a_sizeSendData, u8 *a_pRecvData, u16 a_sizeRecvData, u16 i2cId);
 extern int iWriteRegI2C(u8 *a_pSendData, u16 a_sizeSendData, u16 i2cId);
 extern int iWriteReg(u16 a_u2Addr, u32 a_u4Data, u32 a_u4Bytes, u16 i2cId);
 

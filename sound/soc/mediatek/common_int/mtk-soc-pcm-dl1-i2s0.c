@@ -103,6 +103,9 @@ static int Audio_i2s0_SideGen_Set(struct snd_kcontrol *kcontrol,
 	unsigned int u32AudioI2sOut = 0;
 	unsigned int u32Audio2ndI2sIn = 0;
 
+	if(Afe_Get_Reg(AFE_HD_ENGEN_ENABLE)==0)
+	    Afe_Set_Reg(AFE_HD_ENGEN_ENABLE, 0x1 << 1, 0x1 << 1);
+
 	AudDrv_Clk_On();
 
 	if (ucontrol->value.enumerated.item[0] > ARRAY_SIZE(i2s0_SIDEGEN)) {
@@ -131,6 +134,7 @@ static int Audio_i2s0_SideGen_Set(struct snd_kcontrol *kcontrol,
 
 	if (mi2s0_sidegen_control) {
 		/* Phone call echo ref, speaker mode connection*/
+                Dbmdx_i2s_Control(1);
 		switch (extcodec_echoref_control) {
 		case 1:
 			/* MD1 connection */
@@ -281,6 +285,7 @@ static int Audio_i2s0_SideGen_Set(struct snd_kcontrol *kcontrol,
 		SetMemoryPathEnable(Soc_Aud_Digital_Block_I2S_OUT_2, false);
 		if (GetMemoryPathEnable(Soc_Aud_Digital_Block_I2S_OUT_2) ==
 		    false) {
+		        Dbmdx_i2s_Control(0);
 			Set2ndI2SOutEnable(false); /* Disable I2S3 */
 			udelay(20);
 			Afe_Set_Reg(AUDIO_TOP_CON1, 0x1 << 7,

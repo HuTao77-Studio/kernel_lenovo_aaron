@@ -426,6 +426,15 @@ u16 rtc_rdwr_uart_bits(u16 *val)
 	return ret;
 }
 
+void rtc_mark_meta_poweroff(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("%s\n", __func__);
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_META_POWEROFF, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
 void rtc_bbpu_power_down(void)
 {
 	unsigned long flags;

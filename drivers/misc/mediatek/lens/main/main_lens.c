@@ -90,6 +90,22 @@ static struct stAF_OisPosInfo OisPosInfo;
 /* ------------------------- */
 
 static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
+	{1, AFDRV_DW9714AF, DW9714AF_SetI2Cclient, DW9714AF_Ioctl,
+	 DW9714AF_Release, DW9714AF_GetFileName, NULL},
+        {1, AFDRV_DW9763AF, DW9763AF_SetI2Cclient, DW9763AF_Ioctl,
+	 DW9763AF_Release, DW9763AF_GetFileName, NULL},
+	{1, AFDRV_CN3927E_HI556, CN3927E_HI556_SetI2Cclient, CN3927E_HI556_Ioctl,
+	 CN3927E_HI556_Release, CN3927E_HI556_GetFileName, NULL},
+	{1, AFDRV_CN3937, CN3937_SetI2Cclient, CN3937_Ioctl,
+	 CN3937_Release, CN3937_GetFileName, NULL},
+	{1, AFDRV_CN3927E_GC5035, CN3927E_GC5035_SetI2Cclient, CN3927E_GC5035_Ioctl,
+	 CN3927E_GC5035_Release, CN3927E_GC5035_GetFileName, NULL},
+	{1, AFDRV_GT9768AF, GT9768AF_SetI2Cclient, GT9768AF_Ioctl,
+	 GT9768AF_Release, GT9768AF_GetFileName, NULL},
+	 {1, AFDRV_CN3937AF, CN3937AF_SetI2Cclient, CN3937AF_Ioctl,
+	 CN3937AF_Release,  NULL},
+	{1, AFDRV_CN3927AF, CN3927AF_SetI2Cclient, CN3927AF_Ioctl,
+	 CN3927AF_Release,  NULL},
 	{1, AFDRV_AK7371AF, AK7371AF_SetI2Cclient, AK7371AF_Ioctl,
 	 AK7371AF_Release, AK7371AF_GetFileName, NULL},
 	{1, AFDRV_BU6424AF, BU6424AF_SetI2Cclient, BU6424AF_Ioctl,
@@ -107,14 +123,10 @@ static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
 	 BU63169AF_Release, BU63169AF_GetFileName, NULL
 #endif
 	},
-	{1, AFDRV_DW9714AF, DW9714AF_SetI2Cclient, DW9714AF_Ioctl,
-	 DW9714AF_Release, DW9714AF_GetFileName, NULL},
 	{1, AFDRV_DW9718SAF, DW9718SAF_SetI2Cclient, DW9718SAF_Ioctl,
 	 DW9718SAF_Release, DW9718SAF_GetFileName, NULL},
 	{1, AFDRV_DW9719TAF, DW9719TAF_SetI2Cclient, DW9719TAF_Ioctl,
 	 DW9719TAF_Release, DW9719TAF_GetFileName, NULL},
-	{1, AFDRV_DW9763AF, DW9763AF_SetI2Cclient, DW9763AF_Ioctl,
-	 DW9763AF_Release, DW9763AF_GetFileName, NULL},
 	{1, AFDRV_LC898212XDAF, LC898212XDAF_SetI2Cclient, LC898212XDAF_Ioctl,
 	 LC898212XDAF_Release, LC898212XDAF_GetFileName, NULL},
 	{1, AFDRV_DW9814AF, DW9814AF_SetI2Cclient, DW9814AF_Ioctl,
@@ -169,7 +181,7 @@ void AFRegulatorCtrl(int Stage)
 
 			/* check if customer camera node defined */
 			node = of_find_compatible_node(
-				NULL, NULL, "mediatek,CAMERA_MAIN_AF");
+				NULL, NULL, "mediatek,camera_hw");
 
 			if (node) {
 				kd_node = lens_device->of_node;
@@ -184,7 +196,7 @@ void AFRegulatorCtrl(int Stage)
 					regVCAMAF = regulator_get(lens_device,
 								  "vldo28");
 				else {
-					#if defined(CONFIG_MACH_MT6761)
+					#if defined(CONFIG_MACH_MT6761) && defined(CONFIG_MACH_MT6765)
 					regVCAMAF = regulator_get(lens_device,
 								  "vldo28");
 					#else

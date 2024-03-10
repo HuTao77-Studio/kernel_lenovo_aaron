@@ -32,7 +32,9 @@
 #ifdef CONFIG_RT_REGMAP
 #include <mt-plat/rt-regmap.h>
 #endif
+#include <linux/hardware_info.h>
 
+#include <linux/hardware_info.h>
 #include "mtk_charger_intf.h"
 #include "rt9471.h"
 #define RT9471_DRV_VERSION	"1.0.5_MTK"
@@ -195,8 +197,10 @@ struct rt9471_chip {
 #ifndef CONFIG_TCPC_CLASS
 	struct work_struct init_work;
 #endif
+	bool hiz_mode;
 	atomic_t vbus_gd;
 	bool attach;
+	bool hz_mode;
 	enum rt9471_port_stat port;
 	enum charger_type chg_type;
 	struct power_supply *psy;
@@ -884,6 +888,7 @@ static int __rt9471_enable_autoaicr(struct rt9471_chip *chip, bool en)
 static int __rt9471_enable_hz(struct rt9471_chip *chip, bool en)
 {
 	dev_info(chip->dev, "%s en = %d\n", __func__, en);
+	chip->hiz_mode = en;
 	return (en ? rt9471_set_bit : rt9471_clr_bit)
 		(chip, RT9471_REG_FUNCTION, RT9471_HZ_MASK);
 }
@@ -2154,10 +2159,20 @@ static int rt9471_enable_te(struct charger_device *chg_dev, bool en)
 	return __rt9471_enable_te(chip, en);
 }
 
+static int rt9471_set_hz_mode(struct charger_device *chg_dev, bool en)
+{
+	struct rt9471_chip *chip = dev_get_drvdata(&chg_dev->dev);
+
+	chip->hz_mode = en;
+	return __rt9471_enable_hz(chip, en);
+}
+
 static int rt9471_enable_otg(struct charger_device *chg_dev, bool en)
 {
 	int ret = 0;
 	struct rt9471_chip *chip = dev_get_drvdata(&chg_dev->dev);
+	if(chip->hiz_mode)
+		__rt9471_enable_hz(chip,!en);
 
 	if (en) {
 		ret = __rt9471_set_wdt(chip, chip->desc->wdt);
@@ -2179,6 +2194,10 @@ static int rt9471_enable_otg(struct charger_device *chg_dev, bool en)
 		if (ret < 0)
 			dev_notice(chip->dev, "%s set wdt fail(%d)\n",
 					      __func__, ret);
+						  
+	}
+		if(chip->hz_mode) {
+		__rt9471_enable_hz(chip, !en);
 	}
 
 	return ret;
@@ -2253,11 +2272,29 @@ static int rt9471_is_charging_done(struct charger_device *chg_dev, bool *done)
 	return ret;
 }
 
+
+
 static int rt9471_dump_registers(struct charger_device *chg_dev)
 {
 	struct rt9471_chip *chip = dev_get_drvdata(&chg_dev->dev);
 
 	return __rt9471_dump_registers(chip);
+}
+
+
+static int rt9471_do_event(struct charger_device *chg_dev, u32 event, u32 args)
+{
+        switch(event) {
+        case EVENT_EOC:
+                charger_dev_notify(chg_dev, CHARGER_DEV_NOTIFY_EOC);
+                break;
+        case EVENT_RECHARGE:
+                charger_dev_notify(chg_dev, CHARGER_DEV_NOTIFY_RECHG);
+                break;
+        default:
+                break;
+        }
+        return 0;
 }
 
 static struct charger_ops rt9471_chg_ops = {
@@ -2319,6 +2356,10 @@ static struct charger_ops rt9471_chg_ops = {
 
 	.is_charging_done = rt9471_is_charging_done,
 	.dump_registers = rt9471_dump_registers,
+
+	.event = rt9471_do_event,
+	.hz_mode = rt9471_set_hz_mode,
+
 };
 
 static ssize_t shipping_mode_store(struct device *dev,
@@ -2464,6 +2505,7 @@ static int rt9471_probe(struct i2c_client *client,
 #else
 	__rt9471_dump_registers(chip);
 #endif
+	hardwareinfo_set_prop(HARDWARE_CHARGER_IC_INFO, "RT9471");
 	dev_info(chip->dev, "%s successfully\n", __func__);
 	return 0;
 

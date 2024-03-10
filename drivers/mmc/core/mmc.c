@@ -875,6 +875,164 @@ static ssize_t mmc_dsr_show(struct device *dev,
 
 static DEVICE_ATTR(dsr, S_IRUGO, mmc_dsr_show, NULL);
 
+//niujianmin@wt, 2019.5.15, add EMMC flash_name & vendor_name start
+static int calc_mem_size(void)
+{
+	int temp_size;
+	temp_size = (int)totalram_pages/1024; //page size 4K
+
+	if ((temp_size > 0*256) && (temp_size <= 1*256))
+		return 1;
+	else if ((temp_size > 1*256) && (temp_size <= 2*256))
+		return 2;
+	else if ((temp_size > 2*256) && (temp_size <= 3*256))
+		return 3;
+	else if ((temp_size > 3*256) && (temp_size <= 4*256))
+		return 4;
+	else if ((temp_size > 4*256) && (temp_size <= 6*256))
+		return 6;
+	else if ((temp_size > 6*256) && (temp_size <= 8*256))
+		return 8;
+	else
+		return 0;
+}
+
+static int calc_mmc_size(struct mmc_card *card)
+{
+	int temp_size;
+	temp_size = (int)card->ext_csd.sectors/2/1024/1024; //sector size 512B
+
+	if ((temp_size > 8) && (temp_size <= 16))
+		return 16;
+	else if ((temp_size > 16) && (temp_size <= 32))
+		return 32;
+	else if ((temp_size > 32) && (temp_size <= 64))
+		return 64;
+	else if ((temp_size > 64) && (temp_size <= 128))
+		return 128;
+	else if ((temp_size > 128) && (temp_size <= 256))
+		return 256;
+	else
+		return 0;
+}
+static ssize_t flash_name_show(struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	struct mmc_card *card = mmc_dev_to_card(dev);
+	char *vendor_name = NULL;
+	char *emcp_name = NULL;
+
+	switch (card->cid.manfid) {
+		case 0x11:
+			vendor_name = "Toshiba";
+			break;
+		case 0x13:
+			vendor_name = "Micron";
+			if (strncmp(card->cid.prod_name, "S0J9N8", strlen("S0J9N8")) == 0)
+				emcp_name = "MT29TZZZAD8DKKFB_107W_9N8";
+			else
+				emcp_name = NULL;
+			break;
+		case 0x15:
+			vendor_name = "Samsung";
+			if (strncmp(card->cid.prod_name, "RP64MB", strlen("RP64MB")) == 0)
+				emcp_name = "KMRP60014M-B614";
+			else if (strncmp(card->cid.prod_name, "QE63BB", strlen("QE63BB")) == 0)
+				emcp_name = "KMQE60013B-B318";
+			else if (strncmp(card->cid.prod_name, "QX63AB", strlen("QX63AB")) == 0)
+				emcp_name = "KMQX60013A-B419";
+			else if (strncmp(card->cid.prod_name, "GX6BAB", strlen("GX6BAB")) == 0)
+				emcp_name = "KMGX6001BA-B514";
+			else if (strncmp(card->cid.prod_name, "4X6KMB", strlen("4X6KMB")) == 0)
+				emcp_name = "KM4X6001KM_B321";
+			else
+				emcp_name = NULL;
+			break;
+		case 0x45:
+			vendor_name = "Sandisk";
+			break;
+		case 0x70:
+			vendor_name = "Kingston";
+			if (strncmp(card->cid.prod_name, "GMBMEA", strlen("GMBMEA")) == 0)
+				emcp_name = "32EMCP16_NL3GTA29";
+			else if (strncmp(card->cid.prod_name, "GMBMJC", strlen("GMBMJC")) == 0)
+				emcp_name = "32EMCP24_NL3JTA29";
+			else
+				emcp_name = NULL;
+			break;
+		case 0x90:
+			vendor_name = "Hynix";
+			if (strncmp(card->cid.prod_name, "HAG4a2", strlen("HAG4a2")) == 0)
+				emcp_name = "H9TQ17ABJTCCUR-KUM";
+			else if (strncmp(card->cid.prod_name, "hB8aP>", strlen("hB8aP>")) == 0)
+				{
+					if(calc_mem_size() == 2)
+						emcp_name = "H9HP27ABUMMDAR_KEM";
+					else
+						emcp_name = "H9TQ27ADFTMCUR-KUM";
+				}
+			else
+				emcp_name = NULL;
+			break;
+		case 0x8F:
+			vendor_name = "UNIC";
+			if ((strncmp(card->cid.prod_name, "UY5CS0", strlen("UY5CS0")) == 0) && (2 == calc_mem_size()))
+				emcp_name = "UNPVN5G4CACA4BS";
+			else if ((strncmp(card->cid.prod_name, "UY5CS0", strlen("UY5CS0")) == 0) && (3 == calc_mem_size()))
+				emcp_name = "UNPVN5GACACA4BS";
+			else
+				emcp_name = NULL;
+			break;
+		default:
+			vendor_name = "Unknown";
+			break;
+	}
+
+	if (emcp_name == NULL)
+		emcp_name = card->cid.prod_name;
+	return sprintf(buf, "%s_%s_%dGB_%dGB\n",vendor_name, emcp_name, calc_mem_size(), calc_mmc_size(card));
+}
+static DEVICE_ATTR(flash_name, S_IRUGO, flash_name_show, NULL);
+
+static ssize_t vendor_name_show(struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	struct mmc_card *card = mmc_dev_to_card(dev);
+	char *vendor_name = NULL;
+
+	switch (card->cid.manfid) {
+		case 0x11:
+			vendor_name = "Toshiba";
+			break;
+		case 0x13:
+			vendor_name = "Micron";
+			break;
+		case 0x15:
+			vendor_name = "Samsung";
+			break;
+		case 0x45:
+			vendor_name = "Sandisk";
+			break;
+		case 0x70:
+			vendor_name = "Kingston";
+			break;
+		case 0x90:
+			vendor_name = "Hynix";
+			break;
+		case 0x8F:
+			vendor_name = "UNIC";
+			break;
+		default:
+			vendor_name = "Unknown";
+			break;
+	}
+
+	return sprintf(buf, "%s\n",vendor_name);
+}
+static DEVICE_ATTR(vendor, S_IRUGO, vendor_name_show, NULL);
+//niujianmin@wt, 2019.5.15, add EMMC flash_name & vendor_name end
 static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_cid.attr,
 	&dev_attr_csd.attr,
@@ -899,6 +1057,8 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_rel_sectors.attr,
 	&dev_attr_ocr.attr,
 	&dev_attr_dsr.attr,
+	&dev_attr_flash_name.attr,  //niujianmin@wt, 2019.5.15, add
+	&dev_attr_vendor.attr,  //niujianmin@wt, 2019.5.15, add
 	NULL,
 };
 ATTRIBUTE_GROUPS(mmc_std);

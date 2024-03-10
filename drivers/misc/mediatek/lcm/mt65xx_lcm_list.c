@@ -1160,8 +1160,20 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 	&ft8201_wxga_vdo_incell_boe_lcm_drv,
 #endif
 
+#if defined(FT8201_WXGA_VDO_INCELL_INX)
+	&ft8201_wxga_vdo_incell_inx_lcm_drv,
+#endif
+
 #if defined(NT51021H_WUXGA_VDO_ONCELL_BOE)
 	&nt51021h_wuxga_vdo_oncell_boe_lcm_drv,
+#endif
+
+#if defined(HX8279D_WUXGA_VDO_ONCELL_BOE)
+	&hx8279d_wuxga_vdo_oncell_boe_lcm_drv,
+#endif
+
+#if defined(NT51021B_WUXGA_VDO_ONCELL_AUO)
+	&nt51021b_wuxga_vdo_oncell_auo_lcm_drv,
 #endif
 
 #if defined(HX83112B_FHDP_DSI_VDO_AUO_RT4801)

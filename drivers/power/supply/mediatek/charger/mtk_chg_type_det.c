@@ -49,11 +49,22 @@
 
 #include "mtk_charger_intf.h"
 
+#ifdef CONFIG_TCPC_CLASS
+static int tcpc_polarity = 0;
+
+#endif
 
 void __attribute__((weak)) fg_charger_in_handler(void)
 {
 	pr_notice("%s not defined\n", __func__);
 }
+
+static enum charger_type g_chr_type;
+static bool ignore_usb;
+#ifdef CONFIG_TCPC_CLASS
+extern bool ignore_usb_check;
+#endif
+
 
 struct chg_type_info {
 	struct device *dev;
@@ -95,6 +106,7 @@ static const char * const mtk_chg_type_name[] = {
 	"Apple 1.0A Charger",
 	"Apple 0.5A Charger",
 	"Wireless Charger",
+	"Pogo Charger",
 };
 
 static void dump_charger_name(enum charger_type type)
@@ -108,6 +120,7 @@ static void dump_charger_name(enum charger_type type)
 	case APPLE_2_1A_CHARGER:
 	case APPLE_1_0A_CHARGER:
 	case APPLE_0_5A_CHARGER:
+	case POGO_CHARGER:
 		pr_info("%s: charger type: %d, %s\n", __func__, type,
 			mtk_chg_type_name[type]);
 		break;
@@ -133,8 +146,19 @@ struct mt_charger {
 	struct chg_type_info *cti;
 	bool chg_online; /* Has charger in or not */
 	enum charger_type chg_type;
+	bool ship_mode;
 };
 
+#ifdef CONFIG_TCPC_CLASS
+static ssize_t show_tcpc_polarity(struct device *dev, struct device_attribute *attr,
+					       char *buf)
+{
+	return sprintf(buf, "%d\n", tcpc_polarity);
+}
+
+static DEVICE_ATTR(typec_cc_orientation, 0444, show_tcpc_polarity, NULL);
+
+#endif
 static int mt_charger_online(struct mt_charger *mtk_chg)
 {
 	int ret = 0;
@@ -145,10 +169,8 @@ static int mt_charger_online(struct mt_charger *mtk_chg)
 		if (boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT ||
 		    boot_mode == LOW_POWER_OFF_CHARGING_BOOT) {
 			pr_notice("%s: Unplug Charger/USB\n", __func__);
-			pr_notice("%s: system_state=%d\n", __func__,
-				system_state);
-			if (system_state != SYSTEM_POWER_OFF)
-				kernel_power_off();
+			pr_notice("%s: system_state=%d\n", __func__, system_state);
+	//		kernel_power_off();
 		}
 	}
 
@@ -171,6 +193,9 @@ static int mt_charger_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		val->intval = mtk_chg->chg_type;
 		break;
+	case POWER_SUPPLY_PROP_SHIP_MODE:
+		val->intval = -1;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -183,6 +208,7 @@ static int mt_charger_set_property(struct power_supply *psy,
 	enum power_supply_property psp, const union power_supply_propval *val)
 {
 	struct mt_charger *mtk_chg = power_supply_get_drvdata(psy);
+	struct charger_device *charger_dev = get_charger_by_name("primary_chg");
 	struct chg_type_info *cti;
 
 	pr_info("%s\n", __func__);
@@ -199,7 +225,13 @@ static int mt_charger_set_property(struct power_supply *psy,
 		return 0;
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		mtk_chg->chg_type = val->intval;
+		g_chr_type = val->intval;
 		break;
+	case POWER_SUPPLY_PROP_SHIP_MODE:
+		pr_notice("[%s][%d] set shipping mode flag\n", __func__, __LINE__);
+		charger_dev_shipping_mode_enable(charger_dev, true);
+		//mtk_chg->ship_mode = val->intval;
+		return 0;
 	default:
 		return -EINVAL;
 	}
@@ -238,7 +270,7 @@ static int mt_ac_get_property(struct power_supply *psy,
 			val->intval = 1;
 		/* Reset to 0 if charger type is USB */
 		if ((mtk_chg->chg_type == STANDARD_HOST) ||
-			(mtk_chg->chg_type == CHARGING_HOST))
+			(mtk_chg->chg_type == CHARGING_HOST) || (mtk_chg->chg_type == POGO_CHARGER))
 			val->intval = 0;
 		break;
 	default:
@@ -256,7 +288,7 @@ static int mt_usb_get_property(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
 		if ((mtk_chg->chg_type == STANDARD_HOST) ||
-			(mtk_chg->chg_type == CHARGING_HOST))
+			(mtk_chg->chg_type == CHARGING_HOST) || (mtk_chg->chg_type == POGO_CHARGER))
 			val->intval = 1;
 		else
 			val->intval = 0;
@@ -276,6 +308,7 @@ static int mt_usb_get_property(struct power_supply *psy,
 
 static enum power_supply_property mt_charger_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_SHIP_MODE,
 };
 
 static enum power_supply_property mt_ac_properties[] = {
@@ -291,6 +324,7 @@ static enum power_supply_property mt_usb_properties[] = {
 static void tcpc_power_off_work_handler(struct work_struct *work)
 {
 	pr_info("%s\n", __func__);
+	msleep(3000);
 	kernel_power_off();
 }
 
@@ -300,7 +334,9 @@ static void charger_in_work_handler(struct work_struct *work)
 	fg_charger_in_handler();
 }
 
+
 #ifdef CONFIG_TCPC_CLASS
+
 static void plug_in_out_handler(struct chg_type_info *cti, bool en, bool ignore)
 {
 	mutex_lock(&cti->chgdet_lock);
@@ -311,6 +347,7 @@ static void plug_in_out_handler(struct chg_type_info *cti, bool en, bool ignore)
 	wake_up_interruptible(&cti->waitq);
 	mutex_unlock(&cti->chgdet_lock);
 }
+
 
 static int pd_tcp_notifier_call(struct notifier_block *pnb,
 				unsigned long event, void *data)
@@ -328,6 +365,7 @@ static int pd_tcp_notifier_call(struct notifier_block *pnb,
 		    noti->typec_state.new_state == TYPEC_ATTACHED_NORP_SRC)) {
 			pr_info("%s USB Plug in, pol = %d\n", __func__,
 					noti->typec_state.polarity);
+			tcpc_polarity = noti->typec_state.polarity ? 2 : 1;
 			plug_in_out_handler(cti, true, false);
 		} else if ((noti->typec_state.old_state == TYPEC_ATTACHED_SNK ||
 		    noti->typec_state.old_state == TYPEC_ATTACHED_CUSTOM_SRC ||
@@ -337,12 +375,14 @@ static int pd_tcp_notifier_call(struct notifier_block *pnb,
 				vbus = battery_get_vbus();
 				pr_info("%s KPOC Plug out, vbus = %d\n",
 					__func__, vbus);
+				plug_in_out_handler(cti, false, false);
 				queue_work_on(cpumask_first(cpu_online_mask),
 					      cti->pwr_off_wq,
 					      &cti->pwr_off_work);
 				break;
 			}
 			pr_info("%s USB Plug out\n", __func__);
+			tcpc_polarity = 0;
 			plug_in_out_handler(cti, false, false);
 		} else if (noti->typec_state.old_state == TYPEC_ATTACHED_SRC &&
 			noti->typec_state.new_state == TYPEC_ATTACHED_SNK) {
@@ -399,7 +439,9 @@ static int mt_charger_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct chg_type_info *cti = NULL;
 	struct mt_charger *mt_chg = NULL;
-
+#ifdef CONFIG_TCPC_CLASS
+	struct power_supply *usb_psy;
+#endif
 	pr_info("%s\n", __func__);
 
 	mt_chg = devm_kzalloc(&pdev->dev, sizeof(*mt_chg), GFP_KERNEL);
@@ -481,6 +523,9 @@ static int mt_charger_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err_get_tcpc_dev;
 	}
+	usb_psy = power_supply_get_by_name("usb");
+	device_create_file(&(usb_psy->dev), &dev_attr_typec_cc_orientation);
+
 #endif
 
 	cti->chg_consumer = charger_manager_get_by_name(cti->dev,
@@ -644,6 +689,14 @@ bool mt_charger_plugin(void)
 	pr_info("%s plugin:%d\n", __func__, cti->plugin);
 
 	return cti->plugin;
+}
+
+void charger_ignore_usb(bool ignore)
+{
+	ignore_usb = ignore;
+#ifdef CONFIG_TCPC_CLASS
+	ignore_usb_check = ignore;
+#endif
 }
 
 static s32 __init mt_charger_det_init(void)

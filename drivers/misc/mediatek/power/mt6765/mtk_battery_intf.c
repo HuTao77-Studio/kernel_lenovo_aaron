@@ -52,6 +52,10 @@ signed int battery_get_uisoc(void)
 	return 50;
 }
 
+signed int battery_get_debug_uisoc(void)
+{
+	return 0xffff;
+}
 signed int battery_get_bat_temperature(void)
 {
 	return 25;
@@ -111,6 +115,10 @@ signed int battery_get_uisoc(void)
 	return get_mtk_battery()->ui_soc;
 }
 
+signed int battery_get_debug_uisoc(void)
+{
+	return get_mtk_battery()->fixed_uisoc;
+}
 signed int battery_get_bat_temperature(void)
 {
 	/* TODO */

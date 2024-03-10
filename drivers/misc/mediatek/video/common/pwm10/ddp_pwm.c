@@ -368,11 +368,11 @@ enum disp_pwm_id_t disp_pwm_get_main(void)
 	return g_pwm_main_id;
 }
 
-
+#include "lcm_drv.h"
 #ifndef CONFIG_FPGA_EARLY_PORTING
 static void disp_pwm_set_drverIC_en(enum disp_pwm_id_t id, int enabled)
 {
-#ifdef GPIO_LCM_LED_EN
+/*#ifdef GPIO_LCM_LED_EN
 	if (id == DISP_PWM0) {
 		mt_set_gpio_mode(GPIO_LCM_LED_EN, GPIO_MODE_00);
 		mt_set_gpio_dir(GPIO_LCM_LED_EN, GPIO_DIR_OUT);
@@ -382,7 +382,16 @@ static void disp_pwm_set_drverIC_en(enum disp_pwm_id_t id, int enabled)
 		else
 			mt_set_gpio_out(GPIO_LCM_LED_EN, GPIO_OUT_ZERO);
 	}
-#endif
+#endif*/
+	if (id == DISP_PWM0) {
+		if(enabled) {
+			pr_err("[LCM][GPIO]lcm_resume !\n");
+			lcm_power_enable_led();
+		} else {
+			pr_err("[LCM][GPIO]lcm_suspend !\n");
+			lcm_power_disable_led();
+		}
+	}
 }
 
 static void disp_pwm_set_enabled(struct cmdqRecStruct *cmdq,
@@ -403,9 +412,9 @@ static void disp_pwm_set_enabled(struct cmdqRecStruct *cmdq,
 		/* Always use CPU to config DISP_PWM EN */
 		/* to avoid race condition */
 		DISP_REG_MASK(NULL, reg_base + DISP_PWM_EN_OFF, 0x1, 0x1);
-		PWM_MSG("PWN_EN (by CPU) = 0x1");
+		PWM_MSG("PWM_EN (by CPU) = 0x1");
 
-		disp_pwm_set_drverIC_en(id, enabled);
+		disp_pwm_set_drverIC_en(id, 1);
 	} else {
 #if defined(CONFIG_MACH_MT6799)
 		disp_dts_gpio_select_state(DTS_GPIO_STATE_DISP_PWM_GPIO_LOW);
@@ -419,9 +428,9 @@ static void disp_pwm_set_enabled(struct cmdqRecStruct *cmdq,
 		/* to avoid race condition */
 		DISP_REG_MASK(NULL, reg_base + DISP_PWM_EN_OFF, 0x0, 0x1);
 #endif
-		PWM_MSG("PWN_EN (by CPU) = 0x0");
+		PWM_MSG("PWM_EN (by CPU) = 0x0");
 
-		disp_pwm_set_drverIC_en(id, enabled);
+		disp_pwm_set_drverIC_en(id, 0);
 	}
 
 }

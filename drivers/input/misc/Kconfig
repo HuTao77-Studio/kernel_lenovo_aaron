@@ -836,4 +836,28 @@ config INPUT_HISI_POWERKEY
 	  To compile this driver as a module, choose M here: the
 	  module will be called hisi_powerkey.
 
+config CONFIG_INPUT_SAR_SX9311
+	tristate "sx9311 sar sensor support"
+	depends on INPUT && I2C
+	help
+	  Say Y to enable support for aboc sar sensor.
+
+source "drivers/input/misc/sx9311/Kconfig"
+
+config CONFIG_INPUT_MHALL
+	tristate "sx9311 sar sensor support"
+	depends on INPUT && I2C
+	help
+	  Say Y to enable support for aboc sar sensor.
+
+source "drivers/input/misc/mhall/Kconfig"
+
+config CONFIG_INPUT_SAR_SX9328
+	tristate "sx9328 sar sensor support"
+	depends on INPUT && I2C
+	help
+	  Say Y to enable support for aboc sar sensor.
+
+source "drivers/input/misc/sx9328/Kconfig"
+
 endif

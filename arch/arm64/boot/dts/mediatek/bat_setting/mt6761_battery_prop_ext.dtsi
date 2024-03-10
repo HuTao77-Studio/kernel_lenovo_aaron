@@ -50,5 +50,7 @@ bat_gm30: battery{
 	Q_MAX_SYS_VOLTAGE_BAT2 = <(3350)>;
 	/*	System shut down voltage.*/
 	Q_MAX_SYS_VOLTAGE_BAT3 = <(3350)>;
-#include "mt6761_battery_table_ext.dtsi"
+/*#include "mt6761_battery_table_ext.dtsi"*/
+#include "battery_M8_NVT_4V43_5000mah.dtsi"
+#include "battery_M8_SCUD_4V43_5000mah.dtsi"
 };

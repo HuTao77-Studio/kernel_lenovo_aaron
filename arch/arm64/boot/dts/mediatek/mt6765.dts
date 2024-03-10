@@ -660,12 +660,28 @@ firmware_class.path=/vendor/firmware";
 		status = "okay";
 	};
 
+	lcm: lcm_gpio {
+		compatible = "mediatek,lcm_gpio";
+	};
+
 	touch: touch {
 		compatible = "mediatek,touch";
 	};
 
+	hall_1: hall_1 {
+		compatible = "mediatek,hall_1";
+	};
+
 	accdet: accdet {
 		compatible = "mediatek,pmic-accdet";
+	};
+
+	dbmdx: dbmdx {
+		compatible = "dspg,dbmdx-codec";
+	};
+
+	dbmdx_soundcard: dbmdx-soundcard {
+		compatible = "dbmdx,dbmdx-soundcard";
 	};
 
 	goodix_fp: fingerprint {
@@ -2460,6 +2476,10 @@ firmware_class.path=/vendor/firmware";
 			"TOP_ULPOSC1_D8";
 	};
 
+	swtp: swtp {
+		compatible = "mediatek, swtp-eint";
+	};
+
 	dsi_te: dsi_te {
 		compatible = "mediatek, DSI_TE-eint";
 		status = "disabled";
@@ -2729,6 +2749,16 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,flashlight_core";
 	};
 
+	flashlights_led191: flashlights_led191 {
+		compatible = "mediatek,flashlights_led191";
+		decouple = <0>;
+		channel@1 {
+			type = <0>;
+			ct = <0>;
+			part = <0>;
+		};
+	};
+
 	flashlights_mt6370: flashlights_mt6370 {
 		compatible = "mediatek,flashlights_mt6370";
 		decouple = <0>;
@@ -2763,7 +2793,7 @@ firmware_class.path=/vendor/firmware";
 	lk_charger: lk_charger {
 		compatible = "mediatek,lk_charger";
 		enable_anime;
-		enable_pe_plus;
+		/* enable_pe_plus; */
 		enable_pd20_reset;
 		power_path_support;
 		max_charger_voltage = <6500000>;
@@ -2771,34 +2801,40 @@ firmware_class.path=/vendor/firmware";
 
 		/* charging current */
 		usb_charger_current = <500000>;
-		ac_charger_current = <2050000>;
-		ac_charger_input_current = <3200000>;
+		ac_charger_current = <2500000>;
+		ac_charger_input_current = <2000000>;
 		non_std_ac_charger_current = <500000>;
 		charging_host_charger_current = <1500000>;
-		ta_ac_charger_current = <3000000>;
+		ta_ac_charger_current = <2000000>;
 		pd_charger_current = <500000>;
 
 		/* battery temperature protection */
 		temp_t4_threshold = <50>;
 		temp_t3_threshold = <45>;
 		temp_t1_threshold = <0>;
+
+		/* lenovo Atika */
+		atika_ac_charger_current = <1500000>;
+		atika_ac_charger_input_current = <1000000>;
+		atika_non_std_ac_charger_current = <900000>;
+		atika_charging_host_charger_current = <1000000>;
 	};
 
 	charger: charger {
 		compatible = "mediatek,charger";
 		algorithm_name = "SwitchCharging";
-		/* enable_sw_jeita; */
-		enable_pe_plus;
-		enable_pe_2;
-		enable_pe_3;
-		enable_pe_4;
-		enable_type_c;
+		enable_sw_jeita; 
+		/* enable_pe_plus; */
+		/* enable_pe_2; */
+		/* enable_pe_3; */
+		/* enable_pe_4; */
+		/* enable_type_c; */
 		power_path_support;
 		enable_dynamic_mivr;
 		disable_pd_dual;
 
 		/* common */
-		battery_cv = <4350000>;
+		battery_cv = <4432000>;
 		max_charger_voltage = <6500000>;
 		min_charger_voltage = <4600000>;
 
@@ -2812,29 +2848,66 @@ firmware_class.path=/vendor/firmware";
 		usb_charger_current_unconfigured = <70000>;
 		usb_charger_current_configured = <500000>;
 		usb_charger_current = <500000>;
-		ac_charger_current = <2050000>;
-		ac_charger_input_current = <3200000>;
+		ac_charger_current = <2500000>;
+		ac_charger_input_current = <2000000>;
 		non_std_ac_charger_current = <500000>;
 		charging_host_charger_current = <1500000>;
 		apple_1_0a_charger_current = <650000>;
 		apple_2_1a_charger_current = <800000>;
-		ta_ac_charger_current = <3000000>;
+		ta_ac_charger_current = <2000000>;
+		/* pogo charging current */
+		pogo_charger_current = <1500000>;
+		pogo_charger_input_current = <1500000>;
+
+		/* lenovo Atika */
+		atika_ac_charger_current = <1500000>;
+		atika_ac_charger_input_current = <1000000>;
+		atika_non_std_ac_charger_current = <900000>;
+		atika_charging_host_charger_current = <1000000>;
 
 		/* sw jeita */
-		jeita_temp_above_t4_cv = <4240000>;
-		jeita_temp_t3_to_t4_cv = <4240000>;
-		jeita_temp_t2_to_t3_cv = <4340000>;
-		jeita_temp_t1_to_t2_cv = <4240000>;
-		jeita_temp_t0_to_t1_cv = <4040000>;
-		jeita_temp_below_t0_cv = <4040000>;
+		jeita_temp_above_t4_cc = <0>;
+		jeita_temp_t3_to_t4_cc = <1200000>;
+		jeita_temp_t2_to_t3_cc = <2000000>;
+		jeita_temp_t1_to_t2_cc = <1000000>;
+		jeita_temp_t0_to_t1_cc = <0>;
+		jeita_temp_below_t0_cc = <0>;
+
+		jeita_temp_above_t4_cic = <0>;
+		jeita_temp_t3_to_t4_cic = <1200000>;
+		jeita_temp_t2_to_t3_cic = <2000000>;
+		jeita_temp_t1_to_t2_cic = <1000000>;
+		jeita_temp_t0_to_t1_cic = <0>;
+		jeita_temp_below_t0_cic = <0>;
+
+		atika_jeita_temp_above_t4_cc = <0>;
+		atika_jeita_temp_t3_to_t4_cc = <1000000>;
+		atika_jeita_temp_t2_to_t3_cc = <1000000>;
+		atika_jeita_temp_t1_to_t2_cc = <1000000>;
+		atika_jeita_temp_t0_to_t1_cc = <0>;
+		atika_jeita_temp_below_t0_cc = <0>;
+
+		atika_jeita_temp_above_t4_cic = <0>;
+		atika_jeita_temp_t3_to_t4_cic = <1000000>;
+		atika_jeita_temp_t2_to_t3_cic = <1000000>;
+		atika_jeita_temp_t1_to_t2_cic = <1000000>;
+		atika_jeita_temp_t0_to_t1_cic = <0>;
+		atika_jeita_temp_below_t0_cic = <0>;
+
+		jeita_temp_above_t4_cv = <4208000>;
+		jeita_temp_t3_to_t4_cv = <4208000>;
+		jeita_temp_t2_to_t3_cv = <4432000>;
+		jeita_temp_t1_to_t2_cv = <4432000>;
+		jeita_temp_t0_to_t1_cv = <4432000>;
+		jeita_temp_below_t0_cv = <4432000>;
 		temp_t4_thres = <50>;
-		temp_t4_thres_minus_x_degree = <47>;
+		temp_t4_thres_minus_x_degree = <49>;
 		temp_t3_thres = <45>;
-		temp_t3_thres_minus_x_degree = <39>;
-		temp_t2_thres = <10>;
+		temp_t3_thres_minus_x_degree = <44>;
+		temp_t2_thres = <15>;
 		temp_t2_thres_plus_x_degree = <16>;
 		temp_t1_thres = <0>;
-		temp_t1_thres_plus_x_degree = <6>;
+		temp_t1_thres_plus_x_degree = <1>;
 		temp_t0_thres = <0>;
 		temp_t0_thres_plus_x_degree = <0>;
 		temp_neg_10_thres = <0>;
@@ -2850,9 +2923,9 @@ firmware_class.path=/vendor/firmware";
 		ta_12v_support;
 		ta_9v_support;
 		pe_ichg_level_threshold = <1000000>; /* uA */
-		ta_ac_12v_input_current = <3200000>;
-		ta_ac_9v_input_current = <3200000>;
-		ta_ac_7v_input_current = <3200000>;
+		ta_ac_12v_input_current = <2000000>;
+		ta_ac_9v_input_current = <2000000>;
+		ta_ac_7v_input_current = <2000000>;
 
 		/* PE 2.0 */
 		pe20_ichg_level_threshold = <1000000>; /* uA */
@@ -2908,6 +2981,14 @@ firmware_class.path=/vendor/firmware";
 	pd_adapter: pd_adapter {
 		compatible = "mediatek,pd_adapter";
 		adapter_name = "pd_adapter";
+	};
+	pogo_charger: pogo_charger {
+		compatible = "mediatek,pogo-charger";
+		pogo,en_gpio = <&pio 177 0>;
+		pogo,otg_gpio = <&pio 169 0>;
+		pogo,wrx_gpio = <&pio 13 0>;
+		pogo,intr_pogo_0 = <&pio 5 0>;
+		pogo,intr_pogo_1 = <&pio 9 0>;
 	};
 
 	rt9465_slave_chr: rt9465_slave_chr {
@@ -3159,15 +3240,16 @@ firmware_class.path=/vendor/firmware";
 		compatible = "mediatek,dynamic_options";
 	};
 
+	led_pinctrl: led_pinctrl{
+		compatible = "mediatek,led_pinctrl";
+	};
 };
 
 #include "cust_mt6765_msdc.dtsi"
 #include "mt6357.dtsi"
 #include "mt6370.dtsi"
 #include "mt6370_pd.dtsi"
-#ifdef CONFIG_CHARGER_RT9471
-#include "rt9471.dtsi"
-#endif
+
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
 #include "trusty.dtsi"
 #endif

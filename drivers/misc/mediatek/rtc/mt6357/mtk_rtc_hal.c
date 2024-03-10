@@ -118,6 +118,8 @@ u16 rtc_spare_reg[RTC_SPAR_NUM][3] = {
 	{RTC_SPAR0, 0x1, 7}
 	,
 	{RTC_AL_HOU, 0xff, 8}
+	,
+	{RTC_SPAR0, 0x1, 15}
 };
 
 static int rtc_eosc_cali_td = 8;

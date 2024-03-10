@@ -637,13 +637,14 @@ void EnableAPLLTunerbySampleRate(unsigned int SampleRate)
 		}
 	}
 }
-
+extern bool dspg_micbias_status;
 void DisableAPLLTunerbySampleRate(unsigned int SampleRate)
 {
 	/* pr_debug("%s APLL1Counter = %d APLL2Counter = %d SampleRate = %d\n",
 	 * __func__, APLL1TunerCounter, APLL2TunerCounter, SampleRate);
 	 */
-
+	if(dspg_micbias_status)
+		return;
 	if (GetApllbySampleRate(SampleRate) == Soc_Aud_APLL1) {
 		APLL1TunerCounter--;
 

@@ -1028,6 +1028,9 @@ void load_lcm_resources_from_DT(struct LCM_DRIVER *lcm_drv)
 }
 #endif
 
+#include "linux/hardware_info.h"
+extern char Lcm_name[HARDWARE_MAX_ITEM_LONGTH];
+
 struct disp_lcm_handle *disp_lcm_probe(char *plcm_name,
 	enum LCM_INTERFACE_ID lcm_id, int is_lcm_inited)
 {
@@ -1044,7 +1047,11 @@ struct disp_lcm_handle *disp_lcm_probe(char *plcm_name,
 	struct disp_lcm_handle *plcm = NULL;
 
 	DISPFUNC();
-	DISPCHECK("plcm_name=%s is_lcm_inited %d\n", plcm_name, is_lcm_inited);
+	DISPCHECK("plcm_name=%s, is_lcm_inited %d\n", plcm_name, is_lcm_inited);
+
+	if (is_lcm_inited == 1){
+		strncpy(Lcm_name,plcm_name,strlen(plcm_name)+1);
+	}
 
 #if defined(MTK_LCM_DEVICE_TREE_SUPPORT)
 	if (check_lcm_node_from_DT() == 0) {
@@ -1321,15 +1328,28 @@ int disp_lcm_init(struct disp_lcm_handle *plcm, int force)
 	return 0;
 }
 
+struct LCM_BACKLIGHT_CUSTOM lcm_backlight_cust[6];
+unsigned int lcm_backlight_cust_count;
+
 struct LCM_PARAMS *disp_lcm_get_params(struct disp_lcm_handle *plcm)
 {
+
+	int i=0;
 	/* DISPFUNC(); */
 
-	if (_is_lcm_inited(plcm))
+	if (_is_lcm_inited(plcm)){
+		for(i=0; i<6; i++)
+			lcm_backlight_cust[i] = plcm->params->backlight_cust[i];
+		lcm_backlight_cust_count = plcm->params->backlight_cust_count;
+
 		return plcm->params;
+	}
 	else
 		return NULL;
 }
+
+EXPORT_SYMBOL(lcm_backlight_cust);
+EXPORT_SYMBOL(lcm_backlight_cust_count);
 
 enum LCM_INTERFACE_ID disp_lcm_get_interface_id(struct disp_lcm_handle *plcm)
 {

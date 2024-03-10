@@ -26,17 +26,23 @@
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/of_gpio.h>
+#include <linux/kthread.h>
 #include <linux/workqueue.h>
-#include <linux/mutex.h>
 
+#include <linux/mutex.h>
+#include <mt-plat/mtk_battery.h>
 #ifdef CONFIG_MTK_USB_TYPEC
 #ifdef CONFIG_TCPC_CLASS
 #include "tcpm.h"
+#include <linux/time.h>
+
+static bool is_kpoc = false;
 static struct notifier_block otg_nb;
 static struct tcpc_device *otg_tcpc_dev;
 static struct delayed_work register_otg_work;
 static int otg_tcp_notifier_call(struct notifier_block *nb,
 		unsigned long event, void *data);
+extern bool otg_enable;
 #define TCPC_OTG_DEV_NAME "type_c_port0"
 static void do_register_otg_work(struct work_struct *data)
 {
@@ -52,6 +58,8 @@ static void do_register_otg_work(struct work_struct *data)
 				msecs_to_jiffies(REGISTER_OTG_WORK_DELAY));
 		return;
 	}
+        if (otg_enable)
+		mtk_musb->otg_enable = 1;
 
 	otg_nb.notifier_call = otg_tcp_notifier_call;
 	ret = register_tcp_dev_notifier(otg_tcpc_dev, &otg_nb,
@@ -138,6 +146,205 @@ bool usb20_check_vbus_on(void)
 	return vbus_on;
 }
 
+#include <mt-plat/charger_type.h>
+#define SW_POLLING_PERIOD	100	/*100 ms */
+#define MSEC_TO_NSEC(x)		(x * 1000000UL)
+extern int hw_otg_get_aca_type(void);
+extern void hw_otg_reset_aca_type(void);
+static DEFINE_MUTEX(thub_polling_mutex);
+static DECLARE_WAIT_QUEUE_HEAD(thub_polling_thread_wq);
+static struct hrtimer thub_kthread_timer;
+static bool thub_thread_timeout;
+
+enum POGO_OTG_OPS {
+    POGO_OTG_OPS_OFF = 0,
+    POGO_OTG_OPS_ON,
+    POGO_WRX_OPS_OFF,
+    POGO_WRX_OPS_ON
+};
+
+extern unsigned int wrx_on_delay;
+extern unsigned int wrx_off_delay;
+extern unsigned int otg_on_delay;
+extern unsigned int otg_off_delay;
+
+static void issue_pogo_work(int ops, int delay)
+{
+   if(delay)
+   	mdelay(delay);
+
+   switch (ops) {
+    case POGO_OTG_OPS_OFF:
+        pogo_enable_otg(0);
+        break;
+
+    case POGO_OTG_OPS_ON:
+        pogo_enable_otg(1);
+        break;
+
+    case POGO_WRX_OPS_OFF:
+        pogo_enable_wrx(0);
+        break;
+
+    case POGO_WRX_OPS_ON:
+        pogo_enable_wrx(1);
+        break;
+    }      
+}
+
+enum hrtimer_restart thub_kthread_hrtimer_func(struct hrtimer *timer)
+{
+	thub_thread_timeout = true;
+	wake_up(&thub_polling_thread_wq);
+
+	return HRTIMER_NORESTART;
+}
+
+#define THUB_BASE_VBUS 4000
+#define THUB_DETECT_COUNT 2
+
+enum  CURRENT_STATUS {
+	CURRENT_OTG = 0,
+	CURRENT_THUB = 4,
+	CURRENT_PLUG_OUT = 8,
+	CURRENT_UNKOWN = -1
+};
+
+struct wakeup_source thub_suspend_lock;
+int current_status = CURRENT_UNKOWN;
+extern int pogo_get_state(void);
+int stop_timer = 0;
+int ACA_get_current_type_status(int count,int cur)
+{
+	int ACA_type = 0;
+	int i=0;
+
+	for(i=0;i<count;i++){
+		mdelay(100);
+		hw_otg_reset_aca_type();
+		ACA_type = hw_otg_get_aca_type();
+		if(ACA_type!=cur){
+			return 0;
+		}
+        }
+	return 1;	
+}
+
+#ifndef CONFIG_TCPC_CLASS
+static int thub_polling_thread(void *arg)
+{
+	int i_ACA_type = 0;
+	int i_ACA_type_last = 0;
+        int vbus = 0;
+	int pogo_status = 0, vbus_flag = -1;
+
+	while (1) {
+		wait_event(thub_polling_thread_wq, (thub_thread_timeout == true));
+		thub_thread_timeout = false;
+
+		mutex_lock(&thub_polling_mutex);
+		hw_otg_reset_aca_type();
+		i_ACA_type = hw_otg_get_aca_type();
+		pr_debug("[%s][%d] ACA_type now:%d last: %d\n", __func__, __LINE__, i_ACA_type, i_ACA_type_last);
+		if (i_ACA_type == CURRENT_THUB) {
+		   __pm_stay_awake(&thub_suspend_lock);
+                    if(ACA_get_current_type_status(3,CURRENT_THUB)){
+			    mdelay(50);
+			    vbus = battery_get_vbus();
+			    pogo_status = pogo_get_state();
+		            if(pogo_status!=-1)
+			       vbus_flag  = (pogo_status>>1)&0x01;
+
+			    pr_info("thub detect[%d]:vbus (%d %d %d),ACA_type (%d %d)\n",__LINE__,THUB_BASE_VBUS,vbus,vbus_flag,i_ACA_type,current_status);
+			    if ((current_status!=CURRENT_THUB)&&(vbus > THUB_BASE_VBUS)&&(vbus_flag == 0||vbus_flag == -1)){
+				pr_info("thub detect:Adaptor plug in\n");
+				pr_info("thub detect:disable charger otg\n");
+				charger_dev_enable_otg(primary_charger, false);
+		 
+#ifdef CONFIG_POGO_CHARGER
+				pogo_enable_otg(0);
+#endif
+				mdelay(150);
+				vbus = battery_get_vbus();
+				pr_info("thub detect:vbus: %d", vbus);
+				if(vbus >THUB_BASE_VBUS){
+		 
+#ifdef CONFIG_MTK_CHARGER
+#if CONFIG_MTK_GAUGE_VERSION == 30
+			   	   current_status =  CURRENT_THUB;
+				   pr_info("thub detect:set type 1\n");
+			   	   mtk_pmic_set_charger_type_by_thub(1);
+#endif
+#endif
+			       }
+			    }
+		    }
+		    stop_timer = 0;
+                   __pm_relax(&thub_suspend_lock);
+	        } else if (i_ACA_type == CURRENT_OTG ) {
+		   if(ACA_get_current_type_status(1,CURRENT_OTG)){
+			    vbus = battery_get_vbus();
+			    pr_info("thub detect[%d]:vbus (%d %d),ACA_type (%d %d)\n",__LINE__,THUB_BASE_VBUS,vbus,i_ACA_type,current_status);
+			    if((current_status!=CURRENT_OTG)&&(vbus<THUB_BASE_VBUS)){
+			    	pr_info("thub detect:Adaptor plug out\n");
+ #ifdef CONFIG_MTK_CHARGER
+ #if CONFIG_MTK_GAUGE_VERSION == 30
+				 current_status =  CURRENT_OTG;
+			    	pr_info("thub detect:set type 0\n");
+			    	mtk_pmic_set_charger_type_by_thub(0);
+			    	pr_info("thub detect:enable charger otg\n");
+
+			     	charger_dev_enable_otg(primary_charger, true);
+ #ifdef CONFIG_POGO_CHARGER
+		                mdelay(130);
+			     	pogo_enable_otg(1);
+ #endif
+ #endif
+ #endif
+			   } else if ((current_status!=CURRENT_OTG) && (vbus>THUB_BASE_VBUS)) {
+				current_status = CURRENT_OTG;
+				mtk_pmic_set_charger_type_by_thub(0);
+				pr_info("thub detect:otg already on\n");
+			   }
+		  }
+		  stop_timer = 0;
+	        } else if (i_ACA_type == CURRENT_PLUG_OUT) {
+		    if(ACA_get_current_type_status(1,CURRENT_PLUG_OUT)){
+			    vbus = battery_get_vbus();
+			    pr_info("thub detect[%d]:vbus (%d %d),ACA_type (%d %d)\n",__LINE__,THUB_BASE_VBUS,vbus,i_ACA_type,current_status);
+			    if((current_status!=CURRENT_PLUG_OUT)&&(vbus >THUB_BASE_VBUS)){
+			        pr_info("thub detect:OTG plug out\n");
+				current_status =  CURRENT_PLUG_OUT;
+				pr_info("thub detect:set type 0\n");
+			    	mtk_pmic_set_charger_type_by_thub(0);
+				pr_info("thub detect:disable charger otg\n");
+			        charger_dev_enable_otg(primary_charger, false);
+			 
+#ifdef CONFIG_POGO_CHARGER
+			  	pogo_enable_otg(0);
+#endif
+		           }
+			  stop_timer = 1;
+		    }else{
+			  stop_timer = 0; 
+		    }
+		 }
+
+		if (!stop_timer){
+			hrtimer_start(&thub_kthread_timer,
+				ktime_set(0, MSEC_TO_NSEC(SW_POLLING_PERIOD)),
+				HRTIMER_MODE_REL);
+		}else{
+		      current_status =  CURRENT_UNKOWN;
+		}
+
+		i_ACA_type_last = i_ACA_type;
+
+		mutex_unlock(&thub_polling_mutex);
+	}
+	return 0;
+}
+#endif /* CONFIG_TCPC_CLASS */
 static void _set_vbus(int is_on)
 {
 #ifdef CONFIG_MTK_CHARGER
@@ -160,6 +367,10 @@ static void _set_vbus(int is_on)
 		 * host mode correct used by PMIC
 		 */
 		vbus_on = true;
+#ifdef CONFIG_POGO_CHARGER
+                /* pogo_enable_wrx(1); */
+                issue_pogo_work(POGO_WRX_OPS_ON, wrx_on_delay);
+#endif
 #ifdef CONFIG_MTK_CHARGER
 #if CONFIG_MTK_GAUGE_VERSION == 30
 		charger_dev_enable_otg(primary_charger, true);
@@ -169,12 +380,19 @@ static void _set_vbus(int is_on)
 		set_chr_boost_current_limit(1500);
 #endif
 #endif
+#ifdef CONFIG_POGO_CHARGER
+		/* pogo_enable_otg(1); */
+		issue_pogo_work(POGO_OTG_OPS_ON, otg_on_delay);
+#endif
 	} else if (!is_on && vbus_on) {
 		/* disable VBUS 1st then update flag
 		 * to make host mode correct used by PMIC
 		 */
 		vbus_on = false;
-
+#ifdef CONFIG_POGO_CHARGER
+		/* pogo_enable_otg(0); */
+		issue_pogo_work(POGO_OTG_OPS_OFF, otg_off_delay);
+#endif
 #ifdef CONFIG_MTK_CHARGER
 #if CONFIG_MTK_GAUGE_VERSION == 30
 		charger_dev_enable_otg(primary_charger, false);
@@ -182,8 +400,13 @@ static void _set_vbus(int is_on)
 		set_chr_enable_otg(0x0);
 #endif
 #endif
+#ifdef CONFIG_POGO_CHARGER
+		/* pogo_enable_wrx(0); */
+		issue_pogo_work(POGO_WRX_OPS_OFF, wrx_off_delay);
+#endif
 	}
 }
+
 
 void mt_usb_set_vbus(struct musb *musb, int is_on)
 {
@@ -328,6 +551,8 @@ static int otg_tcp_notifier_call(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
 	struct tcp_notify *noti = data;
+	if(is_kpoc)
+		return NOTIFY_OK;
 
 	switch (event) {
 	case TCP_NOTIFY_SOURCE_VBUS:
@@ -344,7 +569,9 @@ static int otg_tcp_notifier_call(struct notifier_block *nb,
 		if (noti->typec_state.old_state == TYPEC_UNATTACHED &&
 			noti->typec_state.new_state == TYPEC_ATTACHED_SRC) {
 			DBG(0, "OTG Plug in\n");
-			mt_usb_host_connect(0);
+                        if(mtk_musb->otg_enable){
+			    mt_usb_host_connect(0);
+                        }
 		} else if ((noti->typec_state.old_state == TYPEC_ATTACHED_SRC ||
 			noti->typec_state.old_state == TYPEC_ATTACHED_SNK ||
 			noti->typec_state.old_state ==
@@ -352,7 +579,9 @@ static int otg_tcp_notifier_call(struct notifier_block *nb,
 			noti->typec_state.new_state == TYPEC_UNATTACHED) {
 			if (is_host_active(mtk_musb)) {
 				DBG(0, "OTG Plug out\n");
-				mt_usb_host_disconnect(0);
+                                if(mtk_musb->otg_enable){
+				    mt_usb_host_disconnect(0);
+                                 }
 			} else {
 				DBG(0, "USB Plug out\n");
 				mt_usb_dev_disconnect();
@@ -444,6 +673,9 @@ void switch_int_to_device(struct musb *musb)
 	irq_set_irq_type(iddig_eint_num, IRQF_TRIGGER_HIGH);
 	enable_irq(iddig_eint_num);
 	DBG(0, "switch_int_to_device is done\n");
+	hrtimer_start(&thub_kthread_timer,
+			ktime_set(0, MSEC_TO_NSEC(SW_POLLING_PERIOD)),
+			HRTIMER_MODE_REL);
 }
 
 void switch_int_to_host(struct musb *musb)
@@ -690,10 +922,12 @@ static irqreturn_t mt_usb_ext_iddig_int(int irq, void *dev_id)
 	DBG(0, "id pin assert, %s\n", iddig_req_host ?
 			"connect" : "disconnect");
 
-	if (iddig_req_host)
+	if (iddig_req_host){
 		mt_usb_host_connect(0);
-	else
+        }
+	else{
 		mt_usb_host_disconnect(0);
+        }
 	disable_irq_nosync(iddig_eint_num);
 	return IRQ_HANDLED;
 }
@@ -722,6 +956,8 @@ static int otg_iddig_probe(struct platform_device *pdev)
 			iddig_eint_num, ret);
 		return ret;
 	}
+	/* Wakeup IRQ Using USBID */
+        enable_irq_wake(iddig_eint_num);
 
 	return 0;
 }
@@ -759,6 +995,7 @@ void mt_usb_otg_init(struct musb *musb)
 #ifdef CONFIG_MTK_USB_TYPEC
 		DBG(0, "with TYPEC in special mode %d, keep going\n",
 			get_boot_mode());
+		is_kpoc = true;
 #else
 		DBG(0, "w/o TYPEC in special mode %d, skip\n",
 			get_boot_mode());
@@ -770,6 +1007,12 @@ void mt_usb_otg_init(struct musb *musb)
 	INIT_DELAYED_WORK(&host_plug_test_work, do_host_plug_test_work);
 	ktime_start = ktime_get();
 
+#ifndef CONFIG_TCPC_CLASS
+	wakeup_source_init(&thub_suspend_lock, "thub wakelock");
+	hrtimer_init(&thub_kthread_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	thub_kthread_timer.function = thub_kthread_hrtimer_func;
+	kthread_run(thub_polling_thread, NULL, "thub_thread");
+#endif /* CONFIG_TCPC_CLASS */
 	/* CONNECTION MANAGEMENT*/
 #ifdef CONFIG_MTK_USB_TYPEC
 	DBG(0, "host controlled by TYPEC\n");

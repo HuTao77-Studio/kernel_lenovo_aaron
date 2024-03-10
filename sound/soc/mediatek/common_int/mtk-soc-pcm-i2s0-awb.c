@@ -70,6 +70,22 @@ static int mtk_i2s0_awb_probe(struct platform_device *pdev);
 static int mtk_i2s0_awb_pcm_close(struct snd_pcm_substream *substream);
 static int mtk_i2s0_dl1_awb_probe(struct snd_soc_platform *platform);
 
+#ifdef CONFIG_SND_SOC_DBMDX
+static struct snd_pcm_hardware mtk_I2S0_awb_hardware = {
+	.info = (SNDRV_PCM_INFO_INTERLEAVED),
+	.formats = SND_SOC_ADV_MT_FMTS,
+	.rates = SOC_HIGH_USE_RATE,
+	.rate_min = SOC_HIGH_USE_RATE_MIN,
+	.rate_max = SOC_HIGH_USE_RATE_MAX,
+	.channels_min = SOC_NORMAL_USE_CHANNELS_MIN,
+	.channels_max = SOC_NORMAL_USE_CHANNELS_MAX,
+	.buffer_bytes_max = AWB_MAX_BUFFER_SIZE,
+	.period_bytes_max = AWB_MAX_BUFFER_SIZE,
+	.periods_min = AWB_MIN_PERIOD_SIZE,
+	.periods_max = AWB_MAX_PERIOD_SIZE,
+	.fifo_size = 0,
+};
+#else
 static struct snd_pcm_hardware mtk_I2S0_awb_hardware = {
 	.info = (SNDRV_PCM_INFO_INTERLEAVED),
 	.formats = SND_SOC_STD_MT_FMTS,
@@ -84,6 +100,7 @@ static struct snd_pcm_hardware mtk_I2S0_awb_hardware = {
 	.periods_max = AWB_MAX_PERIOD_SIZE,
 	.fifo_size = 0,
 };
+#endif
 
 static void StopAudioI2sInAWBHardware(struct snd_pcm_substream *substream)
 {
@@ -182,11 +199,17 @@ static int mtk_i2s0_awb_pcm_hw_params(struct snd_pcm_substream *substream,
 	return ret;
 }
 
+extern int check_dbmdx_status(void);
+
 static int mtk_i2s0_capture_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	pr_debug("mtk_i2s0_capture_pcm_hw_free\n");
 
 	AudDrv_Emi_Clk_Off();
+	if(check_dbmdx_status()){
+	    StopAudioI2sInAWBHardware(substream);
+	    RemoveMemifSubStream(Soc_Aud_Digital_Block_MEM_AWB,  substream);
+	}
 
 	if (Awb_Capture_dma_buf->area)
 		return 0;

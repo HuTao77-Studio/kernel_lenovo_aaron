@@ -71,5 +71,5 @@ extern signed int battery_get_ibus(void);
 extern signed int battery_get_vbus(void);
 extern signed int battery_get_bat_avg_current(void);
 extern signed int battery_meter_get_charger_voltage(void);
-
+extern signed int battery_get_debug_uisoc(void);
 #endif /* End of _FUEL_GAUGE_GM_30_H */

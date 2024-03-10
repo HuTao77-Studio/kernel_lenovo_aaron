@@ -223,6 +223,10 @@ void led_stop_software_blink(struct led_classdev *led_cdev)
 	led_cdev->blink_delay_on = 0;
 	led_cdev->blink_delay_off = 0;
 	led_cdev->flags &= ~LED_BLINK_SW;
+
+	if(led_cdev->blink_set)
+	    led_cdev->blink_set(led_cdev,&led_cdev->blink_delay_on,
+					&led_cdev->blink_delay_off);
 }
 EXPORT_SYMBOL_GPL(led_stop_software_blink);
 

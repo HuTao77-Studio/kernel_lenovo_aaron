@@ -854,6 +854,36 @@ static ssize_t ps_store_cali(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+static ssize_t ps_store_change_mode(struct device *dev, struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	struct alsps_context *cxt = NULL;
+	int err = 0;
+	uint8_t *tmp_buf = NULL;
+
+	tmp_buf = vzalloc(count);
+	if (!tmp_buf)
+		return -ENOMEM;
+
+	//memcpy(tmp_buf, buf, count);
+    sscanf(buf,"%d",tmp_buf);
+
+	mutex_lock(&alsps_context_obj->alsps_op_mutex);
+	cxt = alsps_context_obj;
+
+	if (cxt->ps_ctl.change_distance != NULL)
+		err = cxt->ps_ctl.change_distance(tmp_buf);
+
+	if (err < 0)
+		pr_err("ps change_mode err %d\n", err);
+
+	mutex_unlock(&alsps_context_obj->alsps_op_mutex);
+	vfree(tmp_buf);
+
+	return count;
+}
+
+
 static int als_ps_remove(struct platform_device *pdev)
 {
 	pr_debug("%s\n", __func__);
@@ -989,6 +1019,8 @@ DEVICE_ATTR(psbatch, 0644, ps_show_batch, ps_store_batch);
 DEVICE_ATTR(psflush, 0644, ps_show_flush, ps_store_flush);
 DEVICE_ATTR(psdevnum, 0644, ps_show_devnum, NULL);
 DEVICE_ATTR(pscali, 0644, NULL, ps_store_cali);
+DEVICE_ATTR(pschangemode, 0644, NULL, ps_store_change_mode); //gjx
+
 
 static struct attribute *als_attributes[] = {
 	&dev_attr_alsactive.attr,
@@ -1005,6 +1037,7 @@ static struct attribute *ps_attributes[] = {
 	&dev_attr_psflush.attr,
 	&dev_attr_psdevnum.attr,
 	&dev_attr_pscali.attr,
+	&dev_attr_pschangemode.attr,  //gjx
 	NULL
 };
 
@@ -1193,6 +1226,7 @@ int ps_register_control_path(struct ps_control_path *ctl)
 	cxt->ps_ctl.set_cali = ctl->set_cali;
 	cxt->ps_ctl.is_use_common_factory = ctl->is_use_common_factory;
 	cxt->ps_ctl.is_polling_mode = ctl->is_polling_mode;
+	cxt->ps_ctl.change_distance = ctl->change_distance;
 
 	if (cxt->ps_ctl.enable_nodata == NULL || cxt->ps_ctl.batch == NULL ||
 	    cxt->ps_ctl.flush == NULL) {

@@ -47,6 +47,7 @@ extern void rtc_disable_abb_32k(void);
 extern void rtc_enable_writeif(void);
 extern void rtc_disable_writeif(void);
 
+extern void rtc_mark_meta_poweroff(void);
 extern void rtc_mark_recovery(void);
 extern void rtc_mark_kpoc(void);
 extern void rtc_mark_fast(void);

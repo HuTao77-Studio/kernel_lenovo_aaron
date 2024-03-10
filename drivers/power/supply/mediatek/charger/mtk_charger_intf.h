@@ -30,6 +30,8 @@
 
 #include <mt-plat/charger_class.h>
 
+/* PD */
+#include <tcpm.h>
 struct charger_manager;
 #include "mtk_pe_intf.h"
 #include "mtk_pe20_intf.h"
@@ -123,6 +125,8 @@ struct sw_jeita_data {
 	int sm;
 	int pre_sm;
 	int cv;
+	int cc;
+	int cic;
 	bool charging;
 	bool error_recovery_flag;
 };
@@ -161,7 +165,8 @@ struct charger_custom_data {
 	int apple_2_1a_charger_current;
 	int ta_ac_charger_current;
 	int pd_charger_current;
-
+	int pogo_charger_current;
+	int pogo_charger_input_current;
 	/* dynamic mivr */
 	int min_charger_voltage_1;
 	int min_charger_voltage_2;
@@ -185,6 +190,20 @@ struct charger_custom_data {
 	int temp_t0_thres;
 	int temp_t0_thres_plus_x_degree;
 	int temp_neg_10_thres;
+
+	/* sw jeta cc and cic */
+	int jeita_temp_above_t4_cc;
+	int jeita_temp_t3_to_t4_cc;
+	int jeita_temp_t2_to_t3_cc;
+	int jeita_temp_t1_to_t2_cc;
+	int jeita_temp_t0_to_t1_cc;
+	int jeita_temp_below_t0_cc;
+	int jeita_temp_above_t4_cic;
+	int jeita_temp_t3_to_t4_cic;
+	int jeita_temp_t2_to_t3_cic;
+	int jeita_temp_t1_to_t2_cic;
+	int jeita_temp_t0_to_t1_cic;
+	int jeita_temp_below_t0_cic;
 
 	/* battery temperature protection */
 	int mtk_temperature_recharge_support;
@@ -363,7 +382,7 @@ struct charger_manager {
 	bool disable_pd_dual;
 
 	int pd_type;
-	//struct tcpc_device *tcpc;
+	struct tcpc_device *tcpc;
 	bool pd_reset;
 
 	/* thread related */

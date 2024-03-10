@@ -1,11 +1,17 @@
-#drivers/input/touchscreen/mediatek/focaltech_touch/focaltech_test
-#
-#Makefile for test module
-#
-ccflags-y += -I$(srctree)/drivers/input/touchscreen/mediatek/
-ccflags-y += -I$(srctree)/drivers/input/touchscreen/mediatek/$(CONFIG_TOUCHSCREEN_MTK_FTS_DIRECTORY)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
-ccflags-y += -I$(srctree)/drivers/base
-
-obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_TS) += focaltech_test_ft5446.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8716.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8607.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft5422.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft6426.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft5822.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8201.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8736.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8006u.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8006m.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8719.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8739.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft5452.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft5472.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8006p.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft6216.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft7251.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft8613s.o

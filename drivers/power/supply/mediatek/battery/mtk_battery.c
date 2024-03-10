@@ -110,6 +110,10 @@ static int battery_in_data[1] = { 0 };
 static int battery_out_data[1] = { 0 };
 static bool g_ADC_Cali;
 
+extern int batt_charging_enable(struct charger_consumer *consumer, bool en);
+extern int batt_supply_enable(struct charger_consumer *consumer, bool en);
+extern int batt_slate_mode_control(struct charger_consumer *consumer, bool en);
+extern int batt_charging_control(struct charger_consumer *consumer, bool en);
 static enum power_supply_property battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_HEALTH,
@@ -359,7 +363,7 @@ static int battery_get_property(struct power_supply *psy,
 		val->intval = data->BAT_batt_vol * 1000;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		val->intval = gm.tbat_precise;
+		val->intval = data->BAT_batt_temp * 10;
 		break;
 
 	default:
@@ -459,6 +463,10 @@ void battery_update(struct battery_data *bat_data)
 #if defined(CONFIG_MTK_DISABLE_GAUGE)
 	return;
 #endif
+	if((bat_data->BAT_CAPACITY == 100) && (upmu_get_rgs_chrdet() != 0)
+		&& (bat_data->BAT_STATUS != POWER_SUPPLY_STATUS_DISCHARGING)) {
+		bat_data->BAT_STATUS = POWER_SUPPLY_STATUS_FULL;
+	}
 
 	if (is_fg_disabled())
 		bat_data->BAT_CAPACITY = 50;
@@ -1190,15 +1198,15 @@ unsigned int TempConverBattThermistor(int temp)
 	int i;
 	unsigned int TBatt_R_Value = 0xffff;
 
-	if (temp >= Fg_Temperature_Table[20].BatteryTemp) {
-		TBatt_R_Value = Fg_Temperature_Table[20].TemperatureR;
+	if (temp >= Fg_Temperature_Table[22].BatteryTemp) {
+		TBatt_R_Value = Fg_Temperature_Table[22].TemperatureR;
 	} else if (temp <= Fg_Temperature_Table[0].BatteryTemp) {
 		TBatt_R_Value = Fg_Temperature_Table[0].TemperatureR;
 	} else {
 		RES1 = Fg_Temperature_Table[0].TemperatureR;
 		TMP1 = Fg_Temperature_Table[0].BatteryTemp;
 
-		for (i = 0; i <= 20; i++) {
+		for (i = 0; i <= 22; i++) {
 			if (temp <= Fg_Temperature_Table[i].BatteryTemp) {
 				RES2 = Fg_Temperature_Table[i].TemperatureR;
 				TMP2 = Fg_Temperature_Table[i].BatteryTemp;
@@ -1227,17 +1235,17 @@ int BattThermistorConverTemp(int Res)
 {
 	int i = 0;
 	int RES1 = 0, RES2 = 0;
-	int TBatt_Value = -2000, TMP1 = 0, TMP2 = 0;
+	int TBatt_Value = -200, TMP1 = 0, TMP2 = 0;
 
 	if (Res >= Fg_Temperature_Table[0].TemperatureR) {
-		TBatt_Value = -400;
-	} else if (Res <= Fg_Temperature_Table[20].TemperatureR) {
-		TBatt_Value = 600;
+		TBatt_Value = -40;
+	} else if (Res <= Fg_Temperature_Table[22].TemperatureR) {
+		TBatt_Value = 70;
 	} else {
 		RES1 = Fg_Temperature_Table[0].TemperatureR;
 		TMP1 = Fg_Temperature_Table[0].BatteryTemp;
 
-		for (i = 0; i <= 20; i++) {
+		for (i = 0; i <= 22; i++) {
 			if (Res >= Fg_Temperature_Table[i].TemperatureR) {
 				RES2 = Fg_Temperature_Table[i].TemperatureR;
 				TMP2 = Fg_Temperature_Table[i].BatteryTemp;
@@ -1250,7 +1258,7 @@ int BattThermistorConverTemp(int Res)
 		}
 
 		TBatt_Value = (((Res - RES2) * TMP1) +
-			((RES1 - Res) * TMP2)) * 10 / (RES1 - RES2);
+			((RES1 - Res) * TMP2)) / (RES1 - RES2);
 	}
 	bm_trace(
 		"[%s] %d %d %d %d %d %d\n",
@@ -1527,7 +1535,7 @@ int force_get_tbat_internal(bool update)
 
 	gm.tbat_precise = bat_temperature_val;
 
-	return bat_temperature_val / 10;
+	return bat_temperature_val;
 }
 
 int force_get_tbat(bool update)
@@ -1542,6 +1550,12 @@ int force_get_tbat(bool update)
 		return 25;
 	}
 
+//+ExtB AKITA-8 modify guojunbo.wt 20190527 disable battery temperature protect
+#ifdef CONFIG_MTK_DISABLE_TEMP_PROTECT
+        bm_debug("CONFIG_MTK_DISABLE_TEMP_PROTECT\n");
+        return 25;
+#endif
+//-ExtB AKITA-8 modify guojunbo.wt 20190527 disable battery temperature protect
 #if defined(FIXED_TBAT_25)
 	bm_debug("[%s] fixed TBAT=25 t\n", __func__);
 	gm.tbat_precise = 250;
@@ -3872,6 +3886,100 @@ static const struct file_operations adc_cali_fops = {
 	.release = adc_cali_release,
 };
 
+static ssize_t show_BattCharging_Control(struct device *dev,struct device_attribute *attr, char *buf)
+{
+	return -1;
+}
+
+static ssize_t store_BattCharging_Control(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned int val = 0;
+	int ret;
+
+	pr_debug("[Battery] store_BattCharging_Control\n");
+	if (buf != NULL && size != 0)
+		ret = kstrtouint(buf, 16, &val);
+
+	if((mt_get_charger_type != CHARGER_UNKNOWN) && val) {
+		bm_err("user stopcharging\n");
+		if (gm.pbat_consumer != NULL) {
+			batt_charging_control(gm.pbat_consumer,1);
+		}
+	} else {
+		if (gm.pbat_consumer != NULL) {
+			batt_charging_control(gm.pbat_consumer,0);
+		}
+	}
+
+        return size;
+}
+static DEVICE_ATTR(BattCharging_Control, 0664, show_BattCharging_Control, store_BattCharging_Control);
+static ssize_t show_StopCharging_Test(struct device *dev,struct device_attribute *attr, char *buf)
+{
+
+	if(mt_get_charger_type() != CHARGER_UNKNOWN){
+		bm_err("user stopcharging ...\n");
+		if (gm.pbat_consumer != NULL){
+			batt_slate_mode_control(gm.pbat_consumer,1);
+		}
+	}else{
+		bm_err("usb/ac offline,skip user stopcharging ...\n");
+	}
+	return sprintf(buf, "chr=0\n");
+}
+
+static ssize_t store_StopCharging_Test(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+{
+    return -1;
+}
+static DEVICE_ATTR(StopCharging_Test, 0664, show_StopCharging_Test, store_StopCharging_Test);
+static ssize_t show_StartCharging_Test(struct device *dev,struct device_attribute *attr, char *buf)
+{
+	if(mt_get_charger_type() != CHARGER_UNKNOWN){
+		bm_err("user startcharging ...\n");
+		if (gm.pbat_consumer != NULL){
+			batt_slate_mode_control(gm.pbat_consumer,0);
+		}
+	}else{
+		bm_err("usb/ac offline,skip user startcharging ...\n");
+	}
+	return sprintf(buf, "chr=1\n");
+}
+static ssize_t store_StartCharging_Test(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+{
+    return -1;
+}
+static DEVICE_ATTR(StartCharging_Test, 0664, show_StartCharging_Test, store_StartCharging_Test);
+
+static ssize_t show_supply_enable(struct device *dev,struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "NA\n");
+}
+
+static ssize_t store_supply_enable(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+{
+	bool value;
+	int ret;
+
+	ret = strtobool(buf, &value);
+	batt_supply_enable(gm.pbat_consumer,value);
+	return size;
+}
+static DEVICE_ATTR(supply_enable, 0664, show_supply_enable, store_supply_enable);
+
+static ssize_t show_charging_enable(struct device *dev,struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "NA\n");
+}
+static ssize_t store_charging_enable(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+{
+	bool value;
+	int ret;
+	ret = strtobool(buf, &value);
+	batt_charging_enable(gm.pbat_consumer,value);
+	return size;
+}
+static DEVICE_ATTR(charging_enable, 0664, show_charging_enable, store_charging_enable);
 
 /*************************************/
 static struct wakeup_source battery_lock;
@@ -4035,6 +4143,13 @@ static int __init battery_probe(struct platform_device *dev)
 		register_charger_manager_notifier(gm.pbat_consumer, &gm.bat_nb);
 	}
 
+#if !defined(CONFIG_MTK_DISABLE_GAUGE)
+	ret = device_create_file(&battery_main.psy->dev, &dev_attr_charging_enable);
+	ret = device_create_file(&battery_main.psy->dev, &dev_attr_supply_enable);
+	ret = device_create_file(&battery_main.psy->dev, &dev_attr_StopCharging_Test);
+	ret = device_create_file(&battery_main.psy->dev, &dev_attr_StartCharging_Test);
+	ret = device_create_file(&battery_main.psy->dev, &dev_attr_BattCharging_Control);
+#endif 
 	battery_debug_init();
 
 	__pm_relax(&battery_lock);

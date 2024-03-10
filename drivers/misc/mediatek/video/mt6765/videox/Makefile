@@ -20,6 +20,7 @@ obj-$(CONFIG_MTK_FB) += mtkfb_console.o		\
 			mtkfb_fence.o		\
 			fbconfig_kdebug.o	\
 			mtkfb_vsync.o		\
+			disp_cust.o             \
 			debug.o			\
 			primary_display.o	\
 			disp_lowpower.o		\
@@ -80,6 +81,10 @@ ifeq ($(CONFIG_MACH_MT6761),y)
 	ccflags-y += -I$(srctree)/drivers/misc/mediatek/ext_disp/mt6765
 else
 	ccflags-y += -I$(srctree)/drivers/misc/mediatek/ext_disp/$(MTK_PLATFORM)
+endif
+
+ifeq ($(CONFIG_MACH_MT6765),y)
+	ccflags-y += -DFHD_AUO_LOCK
 endif
 
 ccflags-$(CONFIG_MTK_LCM) += -I$(srctree)/drivers/misc/mediatek/lcm/inc

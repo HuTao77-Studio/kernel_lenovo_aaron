@@ -17,5 +17,8 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
 obj-$(CONFIG_MTK_WD_KICKER) += wd_common_drv.o
 obj-y += wd_api.o
 
+ifeq  ($(WT_COMPILE_FACTORY_VERSION),yes)
+	ccflags-y += -DFACTORY_VERSION
+endif
 # for WDT Test
 # obj-y += wdt_test.o

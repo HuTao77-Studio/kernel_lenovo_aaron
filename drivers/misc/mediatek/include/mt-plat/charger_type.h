@@ -24,6 +24,7 @@ enum charger_type {
 	APPLE_1_0A_CHARGER, /* 1A apple charger */
 	APPLE_0_5A_CHARGER, /* 0.5A apple charger */
 	WIRELESS_CHARGER,
+	POGO_CHARGER,
 };
 
 #if defined(CONFIG_USB_MTK_HDRC) || defined(CONFIG_USB_MU3D_DRV) \
@@ -51,4 +52,8 @@ extern int is_otg_en(void);
 extern void mtk_pmic_enable_chr_type_det(bool en);
 #endif
 
+extern void mtk_pmic_set_charger_type_by_thub(bool en);
+#ifdef CONFIG_TCPC_CLASS
+extern void mtk_pmic_set_charger_type_by_pogo(bool en);
+#endif
 #endif /* __MTK_CHARGER_TYPE_H__ */
