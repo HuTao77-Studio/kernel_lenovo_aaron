@@ -374,7 +374,7 @@ static void cyttsp5_mt_send_dummy_event(struct cyttsp5_core_data *cd,
 		md->mt_function.final_sync(md->input, 1, 1, &ids);
 #else
 	/* TSG6 FW1.3 EasyWake */
-	u8 key_value;
+	u8 key_value = 0;
 
 	switch (cd->gesture_id) {
 	case GESTURE_DOUBLE_TAP:

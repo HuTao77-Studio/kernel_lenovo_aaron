@@ -222,7 +222,7 @@ static int read_regStat(psx93XX_t this)
 static int manual_offset_calibration(psx93XX_t this)
 {
 	s32 returnValue = 0;
-        u8 reg_val;
+        u8 reg_val = 0x00;
         returnValue |= read_register(this,sx9310_CPS_CTRL0_REG,&reg_val);
 
         reg_val &= 0xF0;
