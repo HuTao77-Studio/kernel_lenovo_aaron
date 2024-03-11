@@ -866,7 +866,7 @@ static ssize_t ps_store_change_mode(struct device *dev, struct device_attribute 
 		return -ENOMEM;
 
 	//memcpy(tmp_buf, buf, count);
-    sscanf(buf,"%d",tmp_buf);
+    sscanf(buf,"%hhu",tmp_buf);
 
 	mutex_lock(&alsps_context_obj->alsps_op_mutex);
 	cxt = alsps_context_obj;
