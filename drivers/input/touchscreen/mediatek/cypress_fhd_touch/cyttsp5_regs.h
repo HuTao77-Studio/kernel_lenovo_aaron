@@ -61,7 +61,7 @@
 #include <linux/version.h>
 #include "cyttsp5_core.h"
 
-// #include <mt_gpio.h>
+/* #include <mt_gpio.h> */
 #include "tpd.h"
 
 #define EASYWAKE_TSG6 
@@ -73,11 +73,11 @@
 #define CY_FW_FILE_SUFFIX	".bin"
 #define CY_FW_FILE_NAME		"cyttsp5_fw.bin"
 
-// 请关闭这个宏如果不需要调试
-//#define VERBOSE_DEBUG
+/* 请关闭这个宏如果不需要调试
+#define VERBOSE_DEBUG */
 
 #define CONFIG_YUDE_MTK
-//#define USE_I2C_DMA
+/* #define USE_I2C_DMA */
 
 #ifdef USE_I2C_DMA
 #include <linux/dma-mapping.h>
@@ -938,9 +938,11 @@ struct cyttsp5_features {
 };
 
 #define NEED_SUSPEND_NOTIFIER 0
-// #define NEED_SUSPEND_NOTIFIER \
-// 	((LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)) \
-// 	&& defined(CONFIG_PM_SLEEP) && defined(CONFIG_PM_RUNTIME))
+/*
+#define NEED_SUSPEND_NOTIFIER \
+	((LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)) \
+	&& defined(CONFIG_PM_SLEEP) && defined(CONFIG_PM_RUNTIME))
+*/
 
 struct cyttsp5_module {
 	struct list_head node;

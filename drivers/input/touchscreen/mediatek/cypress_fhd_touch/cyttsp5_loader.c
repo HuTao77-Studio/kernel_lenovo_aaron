@@ -43,13 +43,14 @@
 #define CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_BINARY_FW_UPGRADE
 #define CYTTSP5_FW_UPGRADE 1
 #define CYTTSP5_TTCONFIG_UPGRADE 0
+/*
+ #define CYTTSP5_FW_UPGRADE 	(defined(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_PLATFORM_FW_UPGRADE) \
+ 	|| defined(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_BINARY_FW_UPGRADE))
 
-// #define CYTTSP5_FW_UPGRADE 	(defined(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_PLATFORM_FW_UPGRADE) \
-// 	|| defined(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_BINARY_FW_UPGRADE))
-
-// #define CYTTSP5_TTCONFIG_UPGRADE \
-// 	(defined(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_PLATFORM_TTCONFIG_UPGRADE) \
-// 	|| defined(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_MANUAL_TTCONFIG_UPGRADE))
+ #define CYTTSP5_TTCONFIG_UPGRADE \
+ 	(defined(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_PLATFORM_TTCONFIG_UPGRADE) \
+ 	|| defined(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_MANUAL_TTCONFIG_UPGRADE))
+*/
 
 static const u8 cyttsp5_security_key[] = {
 	0xA5, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD, 0x5A
@@ -718,12 +719,12 @@ static int cyttsp5_check_firmware_config_version(struct device *dev, u16 fw_conf
 		dev_info(dev, "%s: Image config is different, will upgrade\n", __func__);
 		return 1;
 	}
-
-	// if (fw_config_ver_new < fw_config_ver_img) {
-	// 	dev_dbg(dev, "%s: Image is config older, will NOT upgrade\n", __func__);
-	// 	return -1;
-	// }
-
+/*
+	 if (fw_config_ver_new < fw_config_ver_img) {
+	 	dev_dbg(dev, "%s: Image is config older, will NOT upgrade\n", __func__);
+	 	return -1;
+	 }
+*/
 	return 0;
 }
 
