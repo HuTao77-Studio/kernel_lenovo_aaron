@@ -1138,28 +1138,34 @@ static void slim_video_setting(void)
 //#define s5k4h7yxFRONT_I2CBUS    (4)
 
 #if S5K4H7_OTP
-double pow2(double a,int b)
+#define POW2 2
+int pow2(int a, int b)
 {
-	double c=0.0;
-	int i = 0;
-	for (i=1;i<b;i++){
-		c = a*b;
+	int c = 0, i = 0;
+
+	for (i = 1; i < b; i++){
+		c = a * b;
 	}
 	return c;
 }
 int GetCRC1(unsigned char *Data, unsigned int checksum_start,unsigned int Len)
 {
     int CRC[16] = {0};
-    int DoInvert = 0,j=0;
+    int DoInvert = 0, j=0;
     unsigned int i=0;
     int mycrc16x = 0;
     for (i=0; i<Len; i++)
-    {
+	{
         int hexonly = Data[checksum_start + i];
         for (j=7; j>=0; j--)
-        {
+		{
+#if 0
             DoInvert = hexonly & ((int)pow2(2.0,j));
             DoInvert = DoInvert / (pow2(2.0,j));
+#else
+            DoInvert = hexonly & (pow2(POW2,j));
+            DoInvert = DoInvert / (pow2(POW2,j));
+#endif
             DoInvert = DoInvert ^ CRC[15];
 
             CRC[15] = CRC[14] ^ DoInvert;
@@ -1182,8 +1188,8 @@ int GetCRC1(unsigned char *Data, unsigned int checksum_start,unsigned int Len)
     }
 
     for (i=0; i<16; i++)
-    {
-        mycrc16x = mycrc16x + (CRC[i]*pow2(2.0,i));
+	{
+        mycrc16x = mycrc16x + (CRC[i]*pow2(POW2,i));
     }
     return mycrc16x;
 }
