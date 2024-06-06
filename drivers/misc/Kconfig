@@ -787,6 +787,12 @@ config MEMORY_STATE_TIME
 	help
 	  Memory time statistics exported to /sys/kernel/memory_state_time
 
+config LENOVO_HARDWARE_INFO
+	bool "Lenovo hardware info"
+	default n
+	help
+	  Hardware info for Lenovo devices
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
