@@ -3633,6 +3633,12 @@ static void Ext_Speaker_Amp_Change(bool enable)
 		udelay(500);
 	}
 }
+#ifdef CONFIG_SND_SOC_AW87519
+extern unsigned char aw87519_left_audio_speaker(void);
+extern unsigned char aw87519_left_audio_off(void);
+extern unsigned char aw87519_right_audio_speaker(void);
+extern unsigned char aw87519_right_audio_off(void);
+#endif
 static int Ext_Speaker_Amp_Get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
@@ -3648,6 +3654,10 @@ static int Ext_Speaker_Amp_Set(struct snd_kcontrol *kcontrol,
 	pr_debug("%s() gain = %ld\n ", __func__,
 		 ucontrol->value.integer.value[0]);
 	if (ucontrol->value.integer.value[0]) {
+#ifdef CONFIG_SND_SOC_AW87519
+		aw87519_left_audio_speaker();
+		aw87519_right_audio_speaker();
+#endif
 		Ext_Speaker_Amp_Change(true);
 		mCodec_data->mAudio_Ana_DevicePower
 			[AUDIO_ANALOG_DEVICE_OUT_EXTSPKAMP] =
@@ -3656,10 +3666,60 @@ static int Ext_Speaker_Amp_Set(struct snd_kcontrol *kcontrol,
 		mCodec_data->mAudio_Ana_DevicePower
 			[AUDIO_ANALOG_DEVICE_OUT_EXTSPKAMP] =
 		    ucontrol->value.integer.value[0];
+#ifdef CONFIG_SND_SOC_AW87519
+		aw87519_left_audio_off();
+		aw87519_right_audio_off();
+#endif
 		Ext_Speaker_Amp_Change(false);
 	}
 	return 0;
 }
+
+#ifdef CONFIG_SND_SOC_AW87519
+static int Speaker_Left_Pa_Get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	pr_err("%s()\n", __func__);
+	ucontrol->value.integer.value[0] =
+	    mCodec_data->mAudio_Ana_DevicePower[AUDIO_ANALOG_DEVICE_OUT_SPK_LEFT_PA];
+	return 0;
+}
+static int Speaker_Left_Pa_Set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	pr_err("%s()  spk pa = %ld\n ", __func__, ucontrol->value.integer.value[0]);
+	if (ucontrol->value.integer.value[0]) {
+		aw87519_left_audio_speaker();
+		mCodec_data->mAudio_Ana_DevicePower[AUDIO_ANALOG_DEVICE_OUT_SPK_LEFT_PA] =
+		    ucontrol->value.integer.value[0];
+	} else {
+		mCodec_data->mAudio_Ana_DevicePower[AUDIO_ANALOG_DEVICE_OUT_SPK_LEFT_PA] =
+		    ucontrol->value.integer.value[0];
+		aw87519_left_audio_off();
+	}
+	return 0;
+}
+static int Speaker_Right_Pa_Get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	pr_err("%s()\n", __func__);
+	ucontrol->value.integer.value[0] =
+	    mCodec_data->mAudio_Ana_DevicePower[AUDIO_ANALOG_DEVICE_OUT_SPK_RIGHT_PA];
+	return 0;
+}
+static int Speaker_Right_Pa_Set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	pr_err("%s()  spk pa = %ld\n ", __func__, ucontrol->value.integer.value[0]);
+	if (ucontrol->value.integer.value[0]) {
+		aw87519_right_audio_speaker();
+		mCodec_data->mAudio_Ana_DevicePower[AUDIO_ANALOG_DEVICE_OUT_SPK_RIGHT_PA] =
+		    ucontrol->value.integer.value[0];
+	} else {
+		mCodec_data->mAudio_Ana_DevicePower[AUDIO_ANALOG_DEVICE_OUT_SPK_RIGHT_PA] =
+		    ucontrol->value.integer.value[0];
+		aw87519_right_audio_off();
+	}
+	return 0;
+}
+#endif
+
 static void Receiver_Speaker_Switch_Change(bool enable)
 {
 #ifndef CONFIG_FPGA_EARLY_PORTING
@@ -4391,6 +4451,14 @@ static const struct snd_kcontrol_new mt6357_snd_controls[] = {
 		     hp_plugged_in_get, hp_plugged_in_set),
 	SOC_ENUM_EXT("Apply_N12DB_Gain", Audio_DL_Enum[14],
 		     apply_n12db_get, apply_n12db_set),
+#ifdef CONFIG_SND_SOC_AW87519
+	SOC_ENUM_EXT("Speaker_Left_Pa_Switch", Audio_DL_Enum[16],
+		     Speaker_Left_Pa_Get,
+		     Speaker_Left_Pa_Set),
+	SOC_ENUM_EXT("Speaker_Right_Pa_Switch", Audio_DL_Enum[16],
+		     Speaker_Right_Pa_Get,
+		     Speaker_Right_Pa_Set),
+#endif
 };
 void SetMicPGAGain(void)
 {
