@@ -92,6 +92,10 @@ enum audio_system_gpio_type {
 	GPIO_RCVSPK_HIGH,
 	GPIO_RCVSPK_LOW,
 #endif
+#ifdef CONFIG_SND_SOC_DBMDX
+	GPIO_DBMDX_I2S_ON,
+	GPIO_DBMDX_I2S_OFF,
+#endif
 	GPIO_HPDEPOP_HIGH,
 	GPIO_HPDEPOP_LOW,
 	GPIO_AUD_CLK_MOSI_HIGH,
@@ -147,6 +151,10 @@ static struct audio_gpio_attr aud_gpios[GPIO_NUM] = {
 					    NULL},
 		[GPIO_AUD_CLK_MOSI_LOW] = {"aud_clk_mosi_pull_low", false,
 					   NULL},
+#ifdef CONFIG_SND_SOC_DBMDX
+		[GPIO_DBMDX_I2S_ON] = {"aud_dbmdx_on", false, NULL},
+		[GPIO_DBMDX_I2S_OFF] = {"aud_dbmdx_off", false, NULL},
+#endif
 };
 #endif
 
@@ -525,6 +533,25 @@ int AudDrv_GPIO_EXTAMP_Select(int bEnable, int mode)
 #endif
 	return retval;
 }
+
+#ifdef CONFIG_SND_SOC_DBMDX
+int Dbmdx_i2s_Control(int bEnable)
+{
+	int retval = 0;
+	if(bEnable==1){
+		if (AudDrv_GPIO_IsValid(GPIO_DBMDX_I2S_ON)){
+			retval = AudDrv_GPIO_Select(GPIO_DBMDX_I2S_ON);
+			printk(" dbmdx i2s enable\n");
+		}
+   }else{
+       if (AudDrv_GPIO_IsValid(GPIO_DBMDX_I2S_OFF)){
+            retval = AudDrv_GPIO_Select(GPIO_DBMDX_I2S_OFF);
+            printk(" dbmdx i2s disable\n");
+       }
+   }
+	return retval;
+}
+#endif
 
 int AudDrv_GPIO_EXTAMP2_Select(int bEnable, int mode)
 {
