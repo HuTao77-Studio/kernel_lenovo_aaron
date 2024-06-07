@@ -836,4 +836,10 @@ config INPUT_HISI_POWERKEY
 	  To compile this driver as a module, choose M here: the
 	  module will be called hisi_powerkey.
 
+config INPUT_SAR_SX9311
+	tristate "SX9311 SAR Sensor support"
+	depends on INPUT && I2C
+	help
+	  Say Y to enable support for the SX9311 SAR Sensor driver.
+
 endif
