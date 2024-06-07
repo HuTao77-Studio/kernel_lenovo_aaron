@@ -37,7 +37,7 @@
 /******************************************************************************
  * Private constant and macro definitions using #define
  *****************************************************************************/
-#define KEY_GESTURE_U KEY_U
+#define KEY_GESTURE_U KEY_POWER//KEY_U
 #define KEY_GESTURE_UP KEY_UP
 #define KEY_GESTURE_DOWN KEY_DOWN
 #define KEY_GESTURE_LEFT KEY_LEFT
@@ -436,7 +436,7 @@ int fts_gesture_init(struct fts_ts_data *ts_data)
 	struct input_dev *input_dev = ts_data->input_dev;
 
 	FTS_FUNC_ENTER();
-	input_set_capability(input_dev, EV_KEY, KEY_POWER);
+//    input_set_capability(input_dev, EV_KEY, KEY_POWER);
 	input_set_capability(input_dev, EV_KEY, KEY_GESTURE_U);
 	input_set_capability(input_dev, EV_KEY, KEY_GESTURE_UP);
 	input_set_capability(input_dev, EV_KEY, KEY_GESTURE_DOWN);

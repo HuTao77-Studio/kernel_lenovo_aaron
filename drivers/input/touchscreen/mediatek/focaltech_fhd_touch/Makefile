@@ -16,7 +16,7 @@ obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)	+=  focaltech_gesture.o
 obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)	+=  focaltech_esdcheck.o
 obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_point_report_check.o
 obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_proximity.o
-# obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_test/
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_test/
 
 obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_i2c.o
 obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)	+=  focaltech_flash.o

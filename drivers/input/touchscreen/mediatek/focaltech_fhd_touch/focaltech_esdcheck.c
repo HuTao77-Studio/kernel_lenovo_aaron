@@ -117,6 +117,8 @@ int idc_esdcheck_lcderror(struct fts_ts_data *ts_data)
 }
 #endif
 
+EXPORT_SYMBOL(lcd_need_reset);
+
 static int fts_esdcheck_tp_reset(struct fts_ts_data *ts_data)
 {
 	FTS_FUNC_ENTER();
@@ -156,15 +158,15 @@ static bool get_chip_id(struct fts_ts_data *ts_data)
 				  ret);
 			fts_esdcheck_data.nack_cnt++;
 		} else {
-			if (reg_value == chip_id)
+			if (reg_value == chip_id) {
 				break;
-
+		} else {
 			FTS_DEBUG("read chip_id:%x,retry:%d", reg_value,
 					  i);
 			fts_esdcheck_data.dataerror_cnt++;
 			}
 		}
-		msleep(20);
+		msleep(10);
 	}
 
 	/* if can't get correct data in 3 times, then need hardware reset */

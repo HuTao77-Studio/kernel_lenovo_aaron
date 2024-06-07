@@ -141,20 +141,29 @@
  * Gesture function enable
  * default: disable
  */
-#define FTS_GESTURE_EN 0
+#define FTS_GESTURE_EN 1
 
 /*
  * ESD check & protection
  * default: disable
  */
-#define FTS_ESDCHECK_EN 0
+#define FTS_ESDCHECK_EN 1
 
 /*
  * Production test enable
  * 1: enable, 0:disable(default)
  */
-#define FTS_TEST_EN 0
-
+#define FTS_TEST_EN 1 //bug:446258,liutongxing.wt,gedit,20190521,tp openshort test.
+//+bug:446258,liutongxing.wt,add,20190521,tp openshort test.
+#define WINGTECH_TP_OPENSHORT_EN		1
+#if WINGTECH_TP_OPENSHORT_EN
+#define CTP_PARENT_PROC_NAME 			"touchscreen"
+#define CTP_OPENSHORT_PROC_NAME 		"ctp_openshort_test"
+#define BOE_VENDOR				0x09
+#define AUO_VENDOR				0x00
+#define TP_IC_FT3528                            0x54
+#endif
+//-bug:446258,liutongxing.wt,add,20190521,tp openshort test.
 /*
  * Proximity sensor
  * default: disable
@@ -171,7 +180,7 @@
  * enable it when customer need control TP power
  * default: disable
  */
-#define FTS_POWER_SOURCE_CUST_EN 1
+#define FTS_POWER_SOURCE_CUST_EN 0
 
 /****************************************************/
 
@@ -179,7 +188,7 @@
 /*
  * auto upgrade
  */
-#define FTS_AUTO_UPGRADE_EN 0
+#define FTS_AUTO_UPGRADE_EN 1
 
 /*
  * auto upgrade for lcd cfg

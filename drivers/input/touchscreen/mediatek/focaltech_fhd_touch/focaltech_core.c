@@ -50,7 +50,7 @@
 /*****************************************************************************
  * Private constant and macro definitions using #define
  *****************************************************************************/
-#define FTS_DRIVER_NAME "fts_ts"
+#define FTS_DRIVER_NAME "fts_ts_ft3528"
 #define INTERVAL_READ_REG 200 /* unit:ms */
 #define TIMEOUT_READ_REG 1000 /* unit:ms */
 #if FTS_POWER_SOURCE_CUST_EN
@@ -147,7 +147,7 @@ int fts_reset_proc(int hdelayms)
 {
 	FTS_DEBUG("tp reset");
 	tpd_gpio_output(fts_data->pdata->reset_gpio, 0);
-	msleep(20);
+	msleep(5);
 	tpd_gpio_output(fts_data->pdata->reset_gpio, 1);
 	if (hdelayms)
 		msleep(hdelayms);
@@ -197,7 +197,7 @@ void fts_hid2std(void)
 	if (ret < 0) {
 		FTS_ERROR("hid2std cmd write fail");
 	} else {
-		msleep(20);
+		msleep(10);
 		buf[0] = buf[1] = buf[2] = 0;
 		ret = fts_read(NULL, 0, buf, 3);
 		if (ret < 0) {
@@ -906,7 +906,7 @@ static int fts_power_source_ctrl(struct fts_ts_data *ts_data, int enable)
 		if (ts_data->power_disabled) {
 			FTS_DEBUG("regulator enable !");
 			tpd_gpio_output(ts_data->pdata->reset_gpio, 0);
-			msleep(20);
+			msleep(1);
 			ret = regulator_enable(ts_data->vdd);
 			if (ret) {
 				FTS_ERROR("enable vdd regulator failed,ret=%d",
@@ -914,13 +914,13 @@ static int fts_power_source_ctrl(struct fts_ts_data *ts_data, int enable)
 			}
 			ts_data->power_disabled = false;
 		}
-		msleep(20);
+		msleep(1);
 		tpd_gpio_output(ts_data->pdata->reset_gpio, 1);
 	} else {
 		if (!ts_data->power_disabled) {
 			FTS_DEBUG("regulator disable !");
 			tpd_gpio_output(ts_data->pdata->reset_gpio, 0);
-			msleep(20);
+			msleep(1);
 			ret = regulator_disable(ts_data->vdd);
 			if (ret) {
 				FTS_ERROR("disable vdd regulator failed,ret=%d",
@@ -1047,6 +1047,131 @@ static void fts_platform_data_init(struct fts_ts_data *ts_data)
 		 pdata->max_touch_number, pdata->irq_gpio, pdata->reset_gpio,
 		 pdata->x_min, pdata->y_min, pdata->x_max, pdata->y_max);
 }
+//+bug:446258,liutongxing.wt,add,20190521,tp openshort test.
+#if WINGTECH_TP_OPENSHORT_EN
+
+extern int fts_open_short_test(char *ini_file_name);
+u8 focal_lcm_maker;
+
+static int fts_set_ini_name(char *cfgname)
+{
+    int ret;
+    u8 vendor_id;
+
+    ret = fts_read_reg(FTS_REG_VENDOR_ID,&vendor_id);
+    printk("LCD vendor id:0x%x\n",vendor_id);
+    vendor_id = BOE_VENDOR;
+    if(vendor_id == BOE_VENDOR){
+        sprintf(cfgname, "%s", "FTS_FOR_BOE.ini");
+    }else if(vendor_id == AUO_VENDOR){
+        sprintf(cfgname, "%s", "FTS_FOR_AUO.ini");
+    }
+    return ret;
+}
+
+static ssize_t ctp_open_proc_write(struct file *filp, const char __user *userbuf,size_t count, loff_t *ppos)
+{
+    return -1;
+}
+
+static ssize_t ctp_open_proc_read(struct file *file, char __user *buf,size_t count, loff_t *ppos)
+{
+    char fwname[128] = {0};
+    struct fts_ts_data *ts_data = fts_data;
+    struct i2c_client *client;
+    struct input_dev *input_dev;
+    int result = 0;
+    int ret;
+    int len = count;
+    client = ts_data->client;
+    input_dev = ts_data->input_dev;	
+    if(*ppos){
+        FTS_ERROR("tp test again return\n");
+        return 0;
+    }
+    *ppos += count;
+
+    memset(fwname, 0, sizeof(fwname));
+    fts_set_ini_name(fwname);
+    fwname[strlen(fwname)] = '\0';
+    printk("fwname:%s.", fwname);
+
+    mutex_lock(&input_dev->mutex);
+    disable_irq(client->irq);
+
+#if defined(FTS_ESDCHECK_EN) && (FTS_ESDCHECK_EN)
+    fts_esdcheck_switch(DISABLE);
+#endif
+
+    ret = fts_open_short_test(fwname);
+    if(ret == 1){
+        result = 1;
+        printk("fts open short test success\n");
+    }else{
+        result = 0;
+        printk("fts open short test fail\n");
+    }
+
+#if defined(FTS_ESDCHECK_EN) && (FTS_ESDCHECK_EN)
+    fts_esdcheck_switch(ENABLE);
+#endif
+
+    enable_irq(client->irq);
+    mutex_unlock(&input_dev->mutex);
+
+    if (count > 9)
+        len = 9;
+    printk("fts result = %d\n",result);
+    if (result == 1){
+	if (copy_to_user(buf, "result=1\n", len)) {
+	    FTS_ERROR("copy_to_user fail\n");
+	    return -1;
+ 	}
+    }else{
+        if (copy_to_user(buf, "result=0\n", len)) {
+	    FTS_ERROR("copy_to_user fail\n");
+	    return -1;
+ 	}
+   }
+   return len;
+}
+
+static  struct file_operations ctp_open_procs_fops =
+{
+    .write = ctp_open_proc_write,
+    .read = ctp_open_proc_read,
+    .owner = THIS_MODULE,
+};
+
+static struct proc_dir_entry *ctp_device_proc = NULL;
+
+void create_ctp_proc(void)
+{
+    //----------------------------------------
+    //create read/write interface for tp information
+    //the path is :proc/touchscreen
+    //child node is :version
+    //----------------------------------------
+    struct proc_dir_entry *ctp_open_proc = NULL;
+    printk("openshort create_ctp_proc \n");
+    if( ctp_device_proc == NULL )
+    {
+        ctp_device_proc = proc_mkdir( CTP_PARENT_PROC_NAME, NULL);
+    	if( ctp_device_proc == NULL)
+	{
+	    FTS_ERROR("create parent_proc fail\n");
+	    return;
+	}
+    }
+    ctp_open_proc = proc_create(CTP_OPENSHORT_PROC_NAME, 0777, ctp_device_proc, &ctp_open_procs_fops);
+    if( ctp_open_proc == NULL)
+    {
+        FTS_ERROR("create open_proc fail\n");
+    }
+}
+#endif
+
+//-bug:446258,liutongxing.wt,add,20190521,tp openshort test.
 
 static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 {
@@ -1139,11 +1264,16 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	ret = fts_gesture_init(ts_data);
 	if (ret)
 		FTS_ERROR("init gesture fail");
-
 #endif
 
+//+bug:446258,liutongxing.wt,add,20190521,tp openshort test.
+#if WINGTECH_TP_OPENSHORT_EN
+    create_ctp_proc();
+#endif
+//-bug:446258,liutongxing.wt,add,20190521,tp openshort test.
+
 #if FTS_TEST_EN
-	/* ret = fts_test_init(ts_data); */
+	ret = fts_test_init(ts_data);
 	if (ret)
 		FTS_ERROR("init production test fail");
 
@@ -1184,7 +1314,7 @@ err_power_init:
 	kfree_safe(ts_data->point_buf);
 	kfree_safe(ts_data->events);
 err_report_buffer:
-	/* input_unregister_device(ts_data->input_dev); */
+	input_unregister_device(ts_data->input_dev);
 err_input_init:
 	if (ts_data->ts_workqueue)
 		destroy_workqueue(ts_data->ts_workqueue);
@@ -1231,7 +1361,7 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 	fts_bus_exit(ts_data);
 
 	free_irq(ts_data->irq, ts_data);
-	/* input_unregister_device(ts_data->input_dev); */
+	input_unregister_device(ts_data->input_dev);
 
 	if (ts_data->ts_workqueue)
 		destroy_workqueue(ts_data->ts_workqueue);
