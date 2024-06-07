@@ -195,6 +195,12 @@ config SND_SOC_AW87519
 	help
 	  This option enables support for AW87519 Smart K PA
 
+config SND_SOC_AC107
+	tristate "SoC Audio for X-Power AC107"
+	depends on I2C
+	help
+	  This option enables support for AC107
+
 config SND_SOC_MTK_BTCVSD
 	bool "MTK BT CVSD ALSA ARICHITECTURE"
 	default n

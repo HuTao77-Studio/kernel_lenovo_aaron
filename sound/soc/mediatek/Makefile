@@ -27,6 +27,7 @@ obj-$(CONFIG_SND_SOC_MT8173) += mt8173/
 obj-$(CONFIG_SND_SOC_MT8163) += mt_soc_audio_8163/
 obj-$(CONFIG_SND_SOC_AW87519) += aw87519/
 obj-$(CONFIG_SND_SOC_DBMDX) += dbmdx/
+obj-$(CONFIG_SND_SOC_AC107) += ac107/
 
 # adsp
 ifeq ($(CONFIG_MTK_AURISYS_PHONE_CALL_SUPPORT),y)
