@@ -21,9 +21,9 @@
 #include <linux/atomic.h>
 #include <linux/types.h>
 
-#include "hi556mipiraw_Sensor.h"
+#include "hi556fmipiraw_Sensor.h"
 
-#define PFX "hi556_camera_sensor"
+#define PFX "hi556f_camera_sensor"
 #define LOG_INF(format, args...)    \
 	pr_debug(PFX "[%s] " format, __func__, ##args)
 
@@ -33,7 +33,7 @@ static DEFINE_SPINLOCK(imgsensor_drv_lock);
 #define per_frame 1
 
 static struct imgsensor_info_struct imgsensor_info = {
-	.sensor_id = HI556_SENSOR_ID,
+	.sensor_id = HI556F_SENSOR_ID,
 	.checksum_value = 0x55e2a82f,
 	.pre = {
 		.pclk = 176000000,
@@ -187,7 +187,7 @@ static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[5] = {
 #if MULTI_WRITE
 #define I2C_BUFFER_LEN 765
 
-static kal_uint16 hi556_table_write_cmos_sensor(
+static kal_uint16 hi556f_table_write_cmos_sensor(
 					kal_uint16 *para, kal_uint32 len)
 {
 	char puSendCmd[I2C_BUFFER_LEN];
@@ -497,7 +497,7 @@ static void night_mode(kal_bool enable)
 }	/*	night_mode	*/
 
 #if MULTI_WRITE
-kal_uint16 addr_data_pair_init_hi556[] = {
+kal_uint16 addr_data_pair_init_hi556f[] = {
 	0x0a00, 0x0000,
 	0x0e00, 0x0102,
 	0x0e02, 0x0102,
@@ -726,9 +726,9 @@ kal_uint16 addr_data_pair_init_hi556[] = {
 static void sensor_init(void)
 {
 #if MULTI_WRITE
-	hi556_table_write_cmos_sensor(
-		addr_data_pair_init_hi556,
-		sizeof(addr_data_pair_init_hi556) /
+	hi556f_table_write_cmos_sensor(
+		addr_data_pair_init_hi556f,
+		sizeof(addr_data_pair_init_hi556f) /
 		sizeof(kal_uint16));
 #else
 	write_cmos_sensor(0x0a00, 0x0000); // stream off
@@ -958,7 +958,7 @@ static void sensor_init(void)
 }
 
 #if MULTI_WRITE
-kal_uint16 addr_data_pair_preview_hi556[] = {
+kal_uint16 addr_data_pair_preview_hi556f[] = {
 	0x0b0a, 0x8259,
 	0x0f30, 0x6e25,
 	0x0f32, 0x7167,
@@ -1003,9 +1003,9 @@ kal_uint16 addr_data_pair_preview_hi556[] = {
 static void preview_setting(void)
 {
 #if MULTI_WRITE
-	hi556_table_write_cmos_sensor(
-		addr_data_pair_preview_hi556,
-		sizeof(addr_data_pair_preview_hi556) /
+	hi556f_table_write_cmos_sensor(
+		addr_data_pair_preview_hi556f,
+		sizeof(addr_data_pair_preview_hi556f) /
 		sizeof(kal_uint16));
 #else
 	write_cmos_sensor(0x0b0a, 0x8259);
@@ -1053,7 +1053,7 @@ static void preview_setting(void)
 }
 
 #if MULTI_WRITE
-kal_uint16 addr_data_pair_capture_fps_hi556[] = {
+kal_uint16 addr_data_pair_capture_fps_hi556f[] = {
 	0x0b0a, 0x8252,
 	0x0f30, 0x6e25,
 	0x0f32, 0x7067,
@@ -1094,7 +1094,7 @@ kal_uint16 addr_data_pair_capture_fps_hi556[] = {
 	0x091e, 0x0a00
 };
 
-kal_uint16 addr_data_pair_capture_30fps_hi556[] = {
+kal_uint16 addr_data_pair_capture_30fps_hi556f[] = {
 	0x0b0a, 0x8252,
 	0x0f30, 0x6e25,
 	0x0f32, 0x7067,
@@ -1141,14 +1141,14 @@ static void capture_setting(kal_uint16 currefps)
 {
 #if MULTI_WRITE
 	if (currefps == 300) {
-	hi556_table_write_cmos_sensor(
-		addr_data_pair_capture_30fps_hi556,
-		sizeof(addr_data_pair_capture_30fps_hi556) /
+	hi556f_table_write_cmos_sensor(
+		addr_data_pair_capture_30fps_hi556f,
+		sizeof(addr_data_pair_capture_30fps_hi556f) /
 		sizeof(kal_uint16));
 	} else {
-	hi556_table_write_cmos_sensor(
-		addr_data_pair_capture_fps_hi556,
-		sizeof(addr_data_pair_capture_fps_hi556) /
+	hi556f_table_write_cmos_sensor(
+		addr_data_pair_capture_fps_hi556f,
+		sizeof(addr_data_pair_capture_fps_hi556f) /
 		sizeof(kal_uint16));
 	}
 #else
@@ -1197,20 +1197,6 @@ static void capture_setting(kal_uint16 currefps)
 		write_cmos_sensor(0x091e, 0x0a00);
 	} else	{
 		LOG_INF("capture_setting fps not 300\n");
-		//Sensor Information////////////////////////////
-		//Sensor	  : Hi-556
-		//Date		  : 2016-10-19
-		//Customer        : MTK_validation
-		//Image size	  : 2592x1944
-		//MCLK		  : 24MHz
-		//MIPI speed(Mbps): 880Mbps x 2Lane
-		//Frame Length	  : 4166
-		//Line Length	  : 2816
-		//Max Fps	  : 15.0fps
-		//Pixel order	  : Green 1st (=GB)
-		//X/Y-flip	  : X-flip
-		//BLC offset	  : 64code
-		////////////////////////////////////////////////
 		write_cmos_sensor(0x0b0a, 0x8252);
 		write_cmos_sensor(0x0f30, 0x6e25);
 		write_cmos_sensor(0x0f32, 0x7067);
@@ -1257,7 +1243,7 @@ static void capture_setting(kal_uint16 currefps)
 }
 
 #if MULTI_WRITE
-kal_uint16 addr_data_pair_hs_video_hi556[] = {
+kal_uint16 addr_data_pair_hs_video_hi556f[] = {
 	0x0b0a, 0x8252,
 	0x0f30, 0x6e25,
 	0x0f32, 0x7267,
@@ -1301,24 +1287,10 @@ kal_uint16 addr_data_pair_hs_video_hi556[] = {
 
 static void hs_video_setting(void)
 {
-	//Sensor Information////////////////////////////
-	//Sensor	  : hi-556
-	//Date		  : 2016-10-19
-	//Customer        : MTK_validation
-	//Image size	  : 640x480
-	//MCLK		  : 24MHz
-	//MIPI speed(Mbps): 220Mbps x 2Lane
-	//Frame Length	  : 520
-	//Line Length	  : 2816
-	//Max Fps	  : 120.19fps
-	//Pixel order	  : Green 1st (=GB)
-	//X/Y-flip	  : X-flip
-	//BLC offset	  : 64code
-	////////////////////////////////////////////////
 #if MULTI_WRITE
-	hi556_table_write_cmos_sensor(
-		addr_data_pair_hs_video_hi556,
-		sizeof(addr_data_pair_hs_video_hi556) /
+	hi556f_table_write_cmos_sensor(
+		addr_data_pair_hs_video_hi556f,
+		sizeof(addr_data_pair_hs_video_hi556f) /
 		sizeof(kal_uint16));
 #else
 	write_cmos_sensor(0x0b0a, 0x8252);
@@ -1366,7 +1338,7 @@ static void hs_video_setting(void)
 }
 
 #if MULTI_WRITE
-kal_uint16 addr_data_pair_slim_video_hi556[] = {
+kal_uint16 addr_data_pair_slim_video_hi556f[] = {
 	0x0b0a, 0x8252,
 	0x0f30, 0x6e25,
 	0x0f32, 0x7167,
@@ -1411,24 +1383,11 @@ kal_uint16 addr_data_pair_slim_video_hi556[] = {
 
 static void slim_video_setting(void)
 {
-	//Sensor Information////////////////////////////
-	//Sensor	  : hi-556
-	//Date		  : 2016-10-19
-	//Customer        : MTK_validation
-	//Image size	  : 1280x720
-	//MCLK		  : 24MHz
-	//MIPI speed(Mbps): 440Mbps x 2Lane
-	//Frame Length	  : 2083
-	//Line Length	  : 2816
-	//Max Fps	  : 30.0fps
-	//Pixel order	  : Green 1st (=GB)
-	//X/Y-flip	  : X-flip
-	//BLC offset	  : 64code
-	////////////////////////////////////////////////
+
 #if MULTI_WRITE
-	hi556_table_write_cmos_sensor(
-		addr_data_pair_slim_video_hi556,
-		sizeof(addr_data_pair_slim_video_hi556) /
+	hi556f_table_write_cmos_sensor(
+		addr_data_pair_slim_video_hi556f,
+		sizeof(addr_data_pair_slim_video_hi556f) /
 		sizeof(kal_uint16));
 #else
 	write_cmos_sensor(0x0b0a, 0x8252);
@@ -2270,10 +2229,10 @@ static struct SENSOR_FUNCTION_STRUCT sensor_func = {
 	close
 };
 
-UINT32 HI556_MIPI_RAW_SensorInit(struct SENSOR_FUNCTION_STRUCT **pfFunc)
+UINT32 HI556F_MIPI_RAW_SensorInit(struct SENSOR_FUNCTION_STRUCT **pfFunc)
 {
 	/* To Do : Check Sensor status here */
 	if (pfFunc != NULL)
 		*pfFunc =  &sensor_func;
 	return ERROR_NONE;
-}	/*	HI556_MIPI_RAW_SensorInit	*/
+}	/*	HI556F_MIPI_RAW_SensorInit	*/

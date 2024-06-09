@@ -15,7 +15,7 @@
  *
  * Filename:
  * ---------
- *	 hi556mipi_Sensor.h
+ *	 hi556fmipiraw_Sensor.h
  *
  * Project:
  * --------
@@ -26,8 +26,8 @@
  *	 CMOS sensor header file
  *
  ****************************************************************************/
-#ifndef _HI556MIPI_SENSOR_H
-#define _HI556MIPI_SENSOR_H
+#ifndef _HI556FMIPI_SENSOR_H
+#define _HI556FMIPI_SENSOR_H
 
 #include "kd_camera_typedef.h"
 #include "kd_imgsensor.h"
