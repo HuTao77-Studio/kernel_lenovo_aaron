@@ -63,6 +63,7 @@ struct imgsensor_mode_struct {
 
 	/*	 following for GetDefaultFramerateByScenario()	*/
 	kal_uint16 max_framerate;
+	kal_uint32 mipi_pixel_rate;
 
 } imgsensor_mode_struct;
 
@@ -91,6 +92,7 @@ struct imgsensor_struct {
 	kal_bool  ihdr_en;				//ihdr enable or disable
 
 	kal_uint8 i2c_write_id; //record current sensor's i2c write id
+	kal_uint8 pdaf_mode;
 } imgsensor_struct;
 
 /* SENSOR PRIVATE STRUCT FOR CONSTANT*/

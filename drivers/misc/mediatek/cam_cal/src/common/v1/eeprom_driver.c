@@ -60,6 +60,18 @@ static DEFINE_SPINLOCK(g_spinLock);	/*for SMP */
 
 static unsigned int g_lastDevID;
 
+#define HI556_OTP_FUNCTION 1
+#if HI556_OTP_FUNCTION
+#define HI556_LSC_DATA_SIZE 1868
+#define HI556_AWB_DATA_SIZE 16
+#define VENDOR_ID_DATA_SIZE 1
+extern unsigned char hi556_data_lsc[HI556_LSC_DATA_SIZE + 1];
+extern unsigned char hi556_data_awb[HI556_AWB_DATA_SIZE + 1];
+extern unsigned char hi556_module_id;
+extern unsigned char hi556_lsc_valid;
+extern unsigned char hi556_awb_valid;
+#endif
+
 /***********************************************************
  *
  ***********************************************************/
@@ -653,6 +665,45 @@ static long EEPROM_drv_ioctl(struct file *file,
 	case CAM_CALIOC_G_READ:
 		pr_debug("CAM_CALIOC_G_READ start! offset=%d, length=%d\n",
 			ptempbuf->u4Offset, ptempbuf->u4Length);
+
+#if HI556_OTP_FUNCTION
+    if (ptempbuf->sensorID == 0x556 && ptempbuf->u4Length == 0x1 && ptempbuf->u4Offset == 0x402){//HI846 MID data
+      if (copy_to_user((u8 __user *) ptempbuf->pu1Params , (u8 *)&hi556_module_id, ptempbuf->u4Length)) {
+        kfree(pBuff);
+        kfree(pu1Params);
+        pr_debug("ioctl copy to user failed\n");
+        return -EFAULT;
+      }
+      i4RetValue = VENDOR_ID_DATA_SIZE;
+      kfree(pBuff);
+      kfree(pu1Params);
+      return i4RetValue;
+    }
+    if (ptempbuf->sensorID == 0x556 && ptempbuf->u4Length == 0x74C && ptempbuf->u4Offset == 0x44f && hi556_lsc_valid){//HI556 LSC data
+      if (copy_to_user((u8 __user *) ptempbuf->pu1Params , (u8 *) &hi556_data_lsc[0], ptempbuf->u4Length)) {
+        kfree(pBuff);
+        kfree(pu1Params);
+        pr_debug("ioctl copy to user failed\n");
+        return -EFAULT;
+      }
+      i4RetValue = HI556_LSC_DATA_SIZE;
+      kfree(pBuff);
+      kfree(pu1Params);
+      return i4RetValue;
+    }
+    if (ptempbuf->sensorID == 0x556 && ptempbuf->u4Length == 0x10 && ptempbuf->u4Offset == 0x41b && hi556_awb_valid){//HI556 AWB data
+      if (copy_to_user((u8 __user *) ptempbuf->pu1Params , (u8 *) &hi556_data_awb[0], ptempbuf->u4Length)) {
+        kfree(pBuff);
+        kfree(pu1Params);
+        pr_debug("ioctl copy to user failed\n");
+        return -EFAULT;
+      }
+      i4RetValue = HI556_AWB_DATA_SIZE;
+      kfree(pBuff);
+      kfree(pu1Params);
+      return i4RetValue;
+    }
+#endif
 
 #ifdef CAM_CALGETDLT_DEBUG
 		do_gettimeofday(&ktv1);

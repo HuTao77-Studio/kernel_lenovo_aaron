@@ -38,7 +38,8 @@ struct IMGSENSOR_HW_CFG imgsensor_custom_config[] = {
 			{IMGSENSOR_HW_ID_MCLK, IMGSENSOR_HW_PIN_MCLK},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_AVDD},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DOVDD},
-			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_DVDD},
+			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DVDD},
+			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_AFVDD},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_PDN},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_RST},
 			{IMGSENSOR_HW_ID_NONE, IMGSENSOR_HW_PIN_NONE},
@@ -49,9 +50,9 @@ struct IMGSENSOR_HW_CFG imgsensor_custom_config[] = {
 		IMGSENSOR_I2C_DEV_1,
 		{
 			{IMGSENSOR_HW_ID_MCLK, IMGSENSOR_HW_PIN_MCLK},
-			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_AVDD},
+			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_AVDD},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DOVDD},
-			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_DVDD},
+			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DVDD},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_PDN},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_RST},
 			{IMGSENSOR_HW_ID_NONE, IMGSENSOR_HW_PIN_NONE},
@@ -149,6 +150,21 @@ struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence[] = {
 
 /* Legacy design */
 struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
+#if defined(HI556F_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_HI556F_MIPI_RAW,
+		{
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 1},
+			{DVDD, Vol_1100, 1},
+			{PDN, Vol_Low, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_Low, 1},
+			{RST, Vol_High, 1},
+			{PDN, Vol_High, 5},
+		},
+	},
+#endif
 #if defined(IMX398_MIPI_RAW)
 	{
 		SENSOR_DRVNAME_IMX398_MIPI_RAW,
@@ -688,6 +704,23 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 			{DVDD, Vol_1100, 1},
 			{RST, Vol_High, 5}
 		},
+	},
+#endif
+#if defined(OV13B10_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_OV13B10_MIPI_RAW,
+		{
+            //            {SensorMCLK, Vol_High, 0},
+                        {PDN, Vol_Low, 0},
+                        {RST, Vol_Low, 0},
+                        {DOVDD, Vol_1800, 1},
+                        {AVDD, Vol_2800, 1},
+                        {DVDD, Vol_1200, 1},
+                        {AFVDD, Vol_2800, 5},
+                        {PDN, Vol_High, 1},
+                        {RST, Vol_High, 2},
+                        {SensorMCLK, Vol_High, 0}
+                },
 	},
 #endif
 	/* add new sensor before this line */
