@@ -483,6 +483,9 @@ struct LCM_esd_check_item {
 	unsigned char cmd;
 	unsigned char count;
 	unsigned char para_list[RT_MAX_NUM];
+	unsigned char page_cmd;
+	unsigned char page_count;
+	unsigned char page_para_list[RT_MAX_NUM];
 };
 enum DUAL_DSI_TYPE {
 	DUAL_DSI_NONE = 0x0,
@@ -665,6 +668,13 @@ struct LCM_ROUND_CORNER {
 	void *rb_addr;
 };
 
+struct LCM_BACKLIGHT_CUSTOM{
+	unsigned int max_brightness;
+	unsigned int min_brightness;
+	unsigned int max_bl_lvl;
+	unsigned int min_bl_lvl;
+};
+
 struct LCM_PARAMS {
 	enum LCM_TYPE type;
 	enum LCM_CTRL ctrl;		/* ! how to control LCM registers */
@@ -703,7 +713,13 @@ struct LCM_PARAMS {
 	struct LCM_ROUND_CORNER round_corner_params;
 	unsigned int corner_pattern_tp_size;
 	void *corner_pattern_lt_addr;
-
+	/*bug 337266 - optimize the lcd id read solution, heming.wt, 20180129, begin*/
+	unsigned use_gpioID;
+	unsigned gpioID_value;
+	/*bug 337266 - optimize the lcd id read solution, heming.wt, 20180129, end*/
+	/*bug 338360 - For panel not insert need close backlight and vbias, heming.wt, 20180202, begin*/
+	unsigned int vbias_level;
+	/*bug 338360 - For panel not insert need close backlight and vbias, heming.wt, 20180202, end*/
 	int lcm_color_mode;
 	unsigned int min_luminance;
 	unsigned int average_luminance;
@@ -711,6 +727,8 @@ struct LCM_PARAMS {
 
 	unsigned int hbm_en_time;
 	unsigned int hbm_dis_time;
+    unsigned int backlight_cust_count;
+    struct LCM_BACKLIGHT_CUSTOM backlight_cust[6];
 };
 
 
@@ -843,9 +861,6 @@ struct LCM_UTIL_FUNCS {
 	void (*send_data)(unsigned int data);
 	unsigned int (*read_data)(void);
 
-	void (*dsi_set_cmdq_V4)(struct LCM_setting_table_V3 *para_list,
-			unsigned int size,	bool hs);
-
 	void (*dsi_set_cmdq_V3)(struct LCM_setting_table_V3 *para_list,
 			unsigned int size, unsigned char force_update);
 	void (*dsi_set_cmdq_V2)(unsigned int cmd, unsigned char count,
@@ -945,8 +960,6 @@ struct LCM_DRIVER {
 	void (*set_pwm_for_mix)(int enable);
 
 	void (*aod)(int enter);
-	void (*set_aod_area_cmdq)(void *handle, unsigned char *area);
-	int (*get_doze_delay)(void);
 };
 
 /* LCM Driver Functions */
@@ -962,6 +975,15 @@ extern int display_bias_enable(void);
 extern int display_bias_disable(void);
 extern int display_bias_regulator_init(void);
 
+extern int lcm_power_disable(void);
+extern int lcm_power_disable_vdd3(void);
+extern int lcm_power_disable_led(void);
+extern int lcm_power_enable(void);
+extern int lcm_power_enable_fhd(void);
+extern int lcm_power_enable_vdd3(void);
+extern int lcm_power_enable_led(void);
+extern void lcm_reset_pin(unsigned int mode);
+extern void ctp_reset_pin(unsigned int mode);
 
 
 #endif /* __LCM_DRV_H__ */

@@ -103,6 +103,8 @@ static unsigned int extd_esd_check_mode;
 static unsigned int extd_esd_check_enable;
 #endif
 
+extern int lcd_need_reset;
+
 unsigned int get_esd_check_mode(void)
 {
 	return esd_check_mode;
@@ -1102,7 +1104,7 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 	struct sched_param param = {.sched_priority = 87 };
 	int ret = 0;
 	int i = 0;
-	int esd_try_cnt = 5; /* 20; */
+	int esd_try_cnt = 20; /* 20; */
 	int recovery_done = 0;
 
 	DISPFUNC();
@@ -1147,6 +1149,7 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 				i);
 			primary_display_esd_recovery();
 			recovery_done = 1;
+			lcd_need_reset= 0;
 		} while (++i < esd_try_cnt);
 
 		if (ret == 1) {

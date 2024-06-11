@@ -20,7 +20,8 @@ obj-$(CONFIG_MTK_LCM) += mt65xx_lcm_list.o        \
                          lcm_gpio.o               \
                          lcm_i2c.o                \
                          lcm_pmic.o               \
-                         lcm_util.o
+                         lcm_util.o               \
+                         sm5109.o
 
 LCM_LISTS := $(subst ",,$(CONFIG_CUSTOM_KERNEL_LCM))
 obj-$(CONFIG_MTK_LCM) += $(foreach LCM,$(LCM_LISTS),$(LCM)/)
@@ -37,3 +38,6 @@ DEFINES += MTK_LCM_PHYSICAL_ROTATION=\"$(MTK_LCM_PHYSICAL_ROTATION)\"
 ccflags-$(CONFIG_MTK_LCM) += $(addprefix -D, $(DEFINES))
 ccflags-$(CONFIG_MTK_LCM_DEVICE_TREE_SUPPORT) += -DMTK_LCM_DEVICE_TREE_SUPPORT
 
+ifeq ($(CONFIG_MACH_MT6765),y)
+        ccflags-y += -DFHD_DELAY_ON_BACKLIGHT
+endif

@@ -82,6 +82,10 @@ else
 	ccflags-y += -I$(srctree)/drivers/misc/mediatek/ext_disp/$(MTK_PLATFORM)
 endif
 
+ifeq ($(CONFIG_MACH_MT6765),y)
+	ccflags-y += -DFHD_AUO_LOCK
+endif
+
 ccflags-$(CONFIG_MTK_LCM) += -I$(srctree)/drivers/misc/mediatek/lcm/inc
 
 ifeq ($(CONFIG_MTK_INTERNAL_HDMI_SUPPORT), y)

@@ -1164,6 +1164,14 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 	&nt51021h_wuxga_vdo_oncell_boe_lcm_drv,
 #endif
 
+#if defined(HX8279D_WUXGA_VDO_ONCELL_BOE)
+	&hx8279d_wuxga_vdo_oncell_boe_lcm_drv,
+#endif
+
+#if defined(NT51021B_WUXGA_VDO_ONCELL_AUO)
+	&nt51021b_wuxga_vdo_oncell_auo_lcm_drv,
+#endif
+
 #if defined(HX83112B_FHDP_DSI_VDO_AUO_RT4801)
 	&hx83112b_fhdp_dsi_vdo_auo_rt4801_lcm_drv,
 #endif
