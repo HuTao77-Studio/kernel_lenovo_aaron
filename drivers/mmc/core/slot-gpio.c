@@ -20,6 +20,8 @@
 
 #include "slot-gpio.h"
 
+extern u32 pmic_config_interface(u32 RegNum, u32 val, u32 MASK, u32 SHIFT);
+
 struct mmc_gpio {
 	struct gpio_desc *ro_gpio;
 	struct gpio_desc *cd_gpio;
@@ -34,7 +36,8 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 {
 	/* Schedule a card detection after a debounce timeout */
 	struct mmc_host *host = dev_id;
-
+//BSP.driver.huangxiaotian, add sd power off quick,close VMCH
+    pmic_config_interface(0x1ac4,0x0,0x1,0);
 	host->trigger_card_event = true;
 	mmc_detect_change(host, msecs_to_jiffies(200));
 
